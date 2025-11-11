@@ -1,5 +1,5 @@
 GO ?= go
-GO_VERSION ?= 1.22
+GO_VERSION ?= 1.23
 GO_IMAGE ?= golang:$(GO_VERSION)
 DOCKER_GO_FLAGS ?=
 DOCKER_GO_RUN = docker run --rm -v $(CURDIR):/src -w /src $(DOCKER_GO_FLAGS) $(GO_IMAGE)
@@ -25,6 +25,7 @@ BIN_DIR ?= bin
 CMD_PATH ?= ./cmd/backrest-sidecar
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS ?= -s -w -X main.version=$(VERSION)
+GO_BUILD_FLAGS ?= -buildvcs=false
 TAG ?= backrest-sidecar:dev
 CONFIG ?= ./backrest.config.json
 RUN_FLAGS ?=
@@ -37,7 +38,7 @@ BIN := $(BIN_DIR)/$(BINARY)
 
 build:
 	@mkdir -p $(BIN_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO_CMD) build -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD_PATH)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO_CMD) build $(GO_BUILD_FLAGS) -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD_PATH)
 
 run: build
 	$(BIN) $(ARGS)

@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -130,14 +129,15 @@ func (c *Client) RestartContainer(ctx context.Context, name string, timeout time
 	if name == "" {
 		return errors.New("container name required")
 	}
-	return c.cli.ContainerRestart(ctx, name, &timeout)
+	return c.cli.ContainerRestart(ctx, name, container.StopOptions{
+		Timeout: durationToSecondsPtr(timeout),
+	})
 }
 
 // StopContainer stops the container with timeout.
 func (c *Client) StopContainer(ctx context.Context, id string, timeout time.Duration) error {
-	t := timeout
 	return c.cli.ContainerStop(ctx, id, container.StopOptions{
-		Timeout: &t,
+		Timeout: durationToSecondsPtr(timeout),
 	})
 }
 
@@ -158,4 +158,12 @@ func first(items []string) string {
 		return ""
 	}
 	return items[0]
+}
+
+func durationToSecondsPtr(d time.Duration) *int {
+	if d <= 0 {
+		return nil
+	}
+	secs := int(d.Round(time.Second) / time.Second)
+	return &secs
 }

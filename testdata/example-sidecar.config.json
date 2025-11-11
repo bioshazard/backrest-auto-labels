@@ -1,0 +1,38 @@
+{
+  "repos": [
+    {
+      "id": "sample-repo",
+      "type": "s3",
+      "url": "s3://example-bucket/backups",
+      "env": {
+        "AWS_ACCESS_KEY_ID": "EXAMPLEKEY",
+        "AWS_SECRET_ACCESS_KEY": "EXAMPLESECRET"
+      }
+    }
+  ],
+  "plans": [
+    {
+      "id": "sample_service",
+      "repo": "sample-repo",
+      "schedule": "0 2 * * *",
+      "sources": [
+        "/docker_volumes/sample_stack_appdata",
+        "/docker_volumes/sample_stack_appmedia"
+      ],
+      "exclude": [
+        "/docker_volumes/sample_stack_appdata/tmp"
+      ],
+      "hooks": {
+        "pre": [
+          "docker stop sample-app"
+        ],
+        "post": [
+          "docker start sample-app"
+        ]
+      },
+      "retention": {
+        "spec": "daily=7,weekly=4"
+      }
+    }
+  ]
+}

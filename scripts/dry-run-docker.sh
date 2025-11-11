@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG=${CONFIG:-testdata/example-backrest.config.json}
+CONFIG=${CONFIG:-testdata/example-sidecar.config.json}
 COMPOSE_FILE=${COMPOSE_FILE:-compose.dry-run.yaml}
 PROJECT_NAME=${PROJECT_NAME:-backrest-sidecar}
 HOST_CONFIG=$(realpath "$CONFIG")

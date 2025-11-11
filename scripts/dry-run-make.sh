@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG=${CONFIG:-testdata/example-backrest.config.json}
+CONFIG=${CONFIG:-testdata/example-sidecar.config.json}
 RUN_FLAGS=${RUN_FLAGS:---docker-sock /var/run/docker.sock --docker-root /var/lib/docker --default-repo sample-repo --include-project-name}
 
 if [ ! -f "$CONFIG" ]; then

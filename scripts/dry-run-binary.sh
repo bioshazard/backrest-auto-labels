@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG=${CONFIG:-testdata/example-backrest.config.json}
+CONFIG=${CONFIG:-testdata/example-sidecar.config.json}
 BINARY=${BINARY:-./bin/backrest-sidecar}
 DEFAULT_FLAGS=(--docker-sock /var/run/docker.sock --docker-root /var/lib/docker --default-repo sample-repo --include-project-name)
 

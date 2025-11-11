@@ -1,0 +1,88 @@
+{
+  "modno":  3,
+  "version":  4,
+  "instance":  "sample-backrest",
+  "repos":  [
+    {
+      "id":  "sample-repo",
+      "uri":  "s3://example-bucket/backups",
+      "guid":  "0000000000000000000000000000000000000000000000000000000000000000",
+      "password":  "example-password",
+      "env":  [
+        "AWS_ACCESS_KEY_ID=EXAMPLEKEY",
+        "AWS_SECRET_ACCESS_KEY=EXAMPLESECRET"
+      ],
+      "prunePolicy":  {
+        "schedule":  {
+          "cron":  "0 0 * * *",
+          "clock":  "CLOCK_LAST_RUN_TIME"
+        },
+        "maxUnusedPercent":  10
+      },
+      "checkPolicy":  {
+        "schedule":  {
+          "cron":  "0 0 1 * *",
+          "clock":  "CLOCK_LAST_RUN_TIME"
+        },
+        "readDataSubsetPercent":  0
+      },
+      "commandPrefix":  {}
+    }
+  ],
+  "plans":  [
+    {
+      "id":  "Plan-1",
+      "repo":  "sample-repo",
+      "paths":  [
+        "/docker_volumes/sample_stack_appdata",
+        "/docker_volumes/sample_stack_appmedia"
+      ],
+      "schedule":  {
+        "cron":  "0 * * * *",
+        "clock":  "CLOCK_LOCAL"
+      },
+      "retention":  {
+        "policyTimeBucketed":  {
+          "hourly":  24,
+          "daily":  30,
+          "monthly":  12
+        }
+      },
+      "hooks":  [
+        {
+          "conditions":  [
+            "CONDITION_SNAPSHOT_START"
+          ],
+          "onError":  "ON_ERROR_FATAL",
+          "actionCommand":  {
+            "command":  "docker stop sample-app"
+          }
+        },
+        {
+          "conditions":  [
+            "CONDITION_SNAPSHOT_END"
+          ],
+          "onError":  "ON_ERROR_FATAL",
+          "actionCommand":  {
+            "command":  "docker start sample-app"
+          }
+        }
+      ]
+    }
+  ],
+  "auth":  {
+    "users":  [
+      {
+        "name":  "demo",
+        "passwordBcrypt":  "JDJhJDEwJERlbW9CYXNlUGFzc3dvcmQ5OFZUZ3FOd2NmOGlqTzh1RWFBcE9CU2R3NzJDOGV6N2VGSHY0"
+      }
+    ]
+  },
+  "sync":  {
+    "identity":  {
+      "keyId":  "ecdsa.sample-key-id",
+      "ed25519priv":  "-----BEGIN EC PRIVATE KEY-----\nFAKE/EXAMPLE/PRIVATE/KEY/DO/NOT/USE\n-----END EC PRIVATE KEY-----\n",
+      "ed25519pub":  "-----BEGIN EC PUBLIC KEY-----\nFAKE/EXAMPLE/PUBLIC/KEY/DO/NOT/USE\n-----END EC PUBLIC KEY-----\n"
+    }
+  }
+}

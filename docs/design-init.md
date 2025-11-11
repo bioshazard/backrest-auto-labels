@@ -156,6 +156,7 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
 1. `make build` – produces `./bin/backrest-sidecar`.
 2. `make dry-run CONFIG=/etc/backrest/config.json RUN_FLAGS="--docker-root /var/lib/docker --default-repo default --include-project-name"` – reuses production flags but never writes the config.
 3. Inspect the structured logs (one per candidate plan) to confirm the existing labels resolve to the expected sources/hooks.
+4. Use `testdata/example-backrest.config.json` (tracked sample config derived from a real Backrest export) to iterate locally: `make dry-run CONFIG=testdata/example-backrest.config.json`.
 
 Example output when the `db` service from the section below is already labeled:
 

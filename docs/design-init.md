@@ -336,6 +336,7 @@ The root `Makefile` standardizes common workflows:
 * `make dry-run CONFIG=/etc/backrest/config.json RUN_FLAGS="--docker-root ..."` – runs reconcile with `--dry-run`, ideal for validating existing labels before writes.
 * `make docker-build TAG=ghcr.io/you/backrest-sidecar:dev` – builds the multi-arch image defined in `./Dockerfile`.
 * `make docker-run CONFIG=/etc/backrest/config.json DOCKER_ARGS="daemon --interval 30s"` – builds (if needed) then launches a container that already mounts the Docker socket and Backrest config.
+* The Makefile auto-detects when `go` is missing locally and falls back to `golang:1.22` via Docker (`USE_DOCKER_GO=1` forces the containerized toolchain, `GO_VERSION`/`GO_IMAGE` override the image).
 
 ### Dockerfile
 

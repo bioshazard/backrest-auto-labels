@@ -1,0 +1,18 @@
+services:
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: backrest-sidecar:dev
+    environment:
+      BACKREST_CONFIG: /etc/backrest/config.json
+    volumes:
+      - ${CONFIG_PATH:-./testdata/example-backrest.config.json}:/etc/backrest/config.json
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    command:
+      - daemon
+      - --config
+      - /etc/backrest/config.json
+      - --with-events
+      - --apply

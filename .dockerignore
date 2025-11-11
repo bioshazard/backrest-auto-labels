@@ -1,0 +1,5 @@
+testdata
+scripts
+bin
+Dockerfile
+.dockerignore

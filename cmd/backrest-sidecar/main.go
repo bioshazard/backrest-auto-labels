@@ -158,6 +158,7 @@ func runReconcile(cmd *cobra.Command, flags commonFlags) error {
 
 	result, err := reconciler.Run(cmd.Context())
 	if err != nil {
+		logger.Error("reconcile.failed", slog.String("error", err.Error()))
 		exitCode = 3
 		return err
 	}
@@ -196,6 +197,7 @@ func runDaemon(cmd *cobra.Command, flags commonFlags, interval time.Duration, wi
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
+		logger.Error("daemon.failed", slog.String("error", err.Error()))
 		exitCode = 3
 		return err
 	}
@@ -302,6 +304,7 @@ func runBackup(cmd *cobra.Command, flags *commonFlags, opts backupCLIOptions) er
 		ResticPathPrefix:   opts.resticPathPrefix,
 	}
 	if err := app.RunBackup(cmd.Context(), backupOpts); err != nil {
+		logger.Error("backup-once.failed", slog.String("error", err.Error()))
 		exitCode = 3
 		return err
 	}

@@ -157,6 +157,11 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
 2. `make dry-run CONFIG=/etc/backrest/config.json RUN_FLAGS="--docker-root /var/lib/docker --default-repo default --include-project-name"` – reuses production flags but never writes the config.
 3. Inspect the structured logs (one per candidate plan) to confirm the existing labels resolve to the expected sources/hooks.
 4. Use `testdata/example-backrest.config.json` (tracked sample config derived from a real Backrest export) to iterate locally: `make dry-run CONFIG=testdata/example-backrest.config.json`.
+5. Helper scripts under `scripts/` wrap the common flows:
+   * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
+   * `scripts/dry-run-binary.sh` – builds if needed and runs `./bin/backrest-sidecar reconcile --dry-run ...` (pass extra flags as args).
+   * `scripts/dry-run-docker.sh` – uses `compose.dry-run.yaml` to `docker compose run --build sidecar ...`, mounting the host socket/config; override `CONFIG`, `COMPOSE_FILE`, or supply custom CLI args as needed.
+   * `compose.dry-run.yaml` builds the Dockerfile and wires the right volumes/env; `CONFIG_PATH=/path/to/config docker compose -f compose.dry-run.yaml run --build --rm sidecar reconcile --dry-run ...` is all you need if you prefer manual compose commands.
 
 Example output when the `db` service from the section below is already labeled:
 

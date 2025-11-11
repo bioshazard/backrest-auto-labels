@@ -160,8 +160,8 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
 5. Helper scripts under `scripts/` wrap the common flows:
    * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
    * `scripts/dry-run-binary.sh` – builds if needed and runs `./bin/backrest-sidecar reconcile --dry-run ...` (pass extra flags as args).
-   * `scripts/dry-run-docker.sh` – uses `compose.dry-run.yaml` to `docker compose run --build sidecar ...`, mounting the host socket/config; override `CONFIG`, `COMPOSE_FILE`, or supply custom CLI args as needed.
-   * `compose.dry-run.yaml` builds the Dockerfile and wires the right volumes/env; `CONFIG_PATH=/path/to/config docker compose -f compose.dry-run.yaml run --build --rm sidecar reconcile --dry-run ...` is all you need if you prefer manual compose commands.
+   * `scripts/dry-run-docker.sh` – mounts the entire config directory (`CONFIG_DIR`, default `testdata`) at `/etc/backrest`, sets `CONFIG_FILE` (default `example-sidecar.config.json`), and runs `docker compose run --build sidecar ...` with the usual dry-run flags. Override `CONFIG_DIR`, `CONFIG_FILE`, `COMPOSE_FILE`, or CLI args to suit your test.
+   * `compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f compose.dry-run.yaml up demo-echo sidecar` for an end-to-end playground, or rely on the helper script above.
 
 Example output when the `db` service from the section below is already labeled:
 
@@ -343,13 +343,14 @@ The root `Makefile` standardizes common workflows:
 * `make docker-build TAG=ghcr.io/you/backrest-sidecar:dev` – builds the multi-arch image defined in `./Dockerfile`.
 * `make docker-run CONFIG=/etc/backrest/config.json DOCKER_ARGS="daemon --interval 30s"` – builds (if needed) then launches a container that already mounts the Docker socket and Backrest config.
 * The Makefile auto-detects when `go` is missing locally and falls back to `golang:1.23` via Docker (`GO_VERSION`/`GO_IMAGE` override the tag, and `USE_DOCKER_GO=1` forces the containerized toolchain).
+* `Dockerfile` ships a root-owned distroless image, so the container can talk to `/var/run/docker.sock` and write bind-mounted configs without extra group plumbing. Drop privileges via Compose (`user:`) later if desired.
 
 ### Dockerfile
 
 `./Dockerfile` is a two-stage build:
 
 1. `golang:<version>` stage compiles the static binary with BuildKit cache mounts for fast rebuilds (`GO_VERSION` arg is overridable).
-2. `gcr.io/distroless/base-debian12:nonroot` stage ships only the binary plus sane defaults: `ENTRYPOINT ["backrest-sidecar"]` and `CMD ["daemon","--config","/etc/backrest/config.json","--with-events","--apply"]`.
+2. `gcr.io/distroless/base-debian12:debug` stage copies the binary, keeps a minimal BusyBox shell for troubleshooting, and runs as root with `ENTRYPOINT ["backrest-sidecar"]` / `CMD ["daemon","--config","/etc/backrest/config.json","--with-events","--apply"]`.
 
 You can override the command when calling `docker run` or `make docker-run`, but the defaults assume the config is bind-mounted at `/etc/backrest/config.json`, `/var/run/docker.sock` is already provided by the host, and `/var/lib/docker` is mounted read-only for volume derivation.
 

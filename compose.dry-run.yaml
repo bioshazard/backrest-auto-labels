@@ -1,13 +1,31 @@
 services:
+  demo-echo:
+    image: hashicorp/http-echo:1.0.0
+    command:
+      - -listen
+      - :8080
+      - -text
+      - "Hello from demo"
+    volumes:
+      - demo-data:/var/demo-data
+    labels:
+      backrest.enable: "true"
+      backrest.repo: "sample-repo"
+      backrest.schedule: "15 2 * * *"
+      backrest.paths.include: "/var/demo-data"
+      backrest.keep: "daily=7,weekly=4"
+      backrest.pre: "echo quiesce-start"
+      backrest.post: "echo quiesce-end"
+
   sidecar:
     build:
       context: .
       dockerfile: Dockerfile
     image: backrest-sidecar:dev
     environment:
-      BACKREST_CONFIG: /etc/backrest/config.json
+      BACKREST_CONFIG: /etc/backrest/${CONFIG_FILE:-example-sidecar.config.json}
     volumes:
-      - ${CONFIG_PATH:-./testdata/example-backrest.config.json}:/etc/backrest/config.json
+      - ${CONFIG_DIR:-./testdata}:/etc/backrest:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker:/var/lib/docker:ro
     command:
@@ -16,3 +34,6 @@ services:
       - /etc/backrest/config.json
       - --with-events
       - --apply
+
+volumes:
+  demo-data:

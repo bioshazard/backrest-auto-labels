@@ -17,4 +17,5 @@
 - When the task touches Backrest behavior, ground answers in official Backrest docs; fetch via Context7 (`/garethgeorge/backrest`) before summarizing.
 - Watch for file permission regressions: config JSON must remain `0644` and retain ownership.
 - Be explicit about docker volume prefixes and mounting assumptions so operators know how to override them.
+- Default retention fallback is `daily=7,weekly=4`; expose overrides via `--default-retention` or `BACKREST_DEFAULT_RETENTION` when relevant.
 - Local host lacks Go; run formatting/tests via `make fmt`, `make test`, etc., which automatically wrap `go` inside `golang:<GO_VERSION>` using Docker (see Makefile).

@@ -27,6 +27,7 @@ type ReconcileOptions struct {
 	VolumePrefix       string
 	DefaultRepo        string
 	DefaultSchedule    string
+	DefaultRetention   string
 	IncludeProjectName bool
 	ExcludeBindMounts  bool
 	Logger             *slog.Logger
@@ -62,6 +63,7 @@ func NewReconciler(opts ReconcileOptions) (*Reconciler, error) {
 		VolumePrefix:       opts.VolumePrefix,
 		DefaultRepo:        opts.DefaultRepo,
 		DefaultSchedule:    opts.DefaultSchedule,
+		DefaultRetention:   opts.DefaultRetention,
 		IncludeProjectName: opts.IncludeProjectName,
 		ExcludeBindMounts:  opts.ExcludeBindMounts,
 	})
@@ -98,6 +100,7 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.setDefaultRepoFromConfig(cfg)
 
 	containers, err := r.client.ListBackrestEnabled(ctx)
 	if err != nil {
@@ -155,6 +158,17 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 
 	r.log.Info("reconcile.complete", slog.Int("rendered", rendered), slog.Int("skipped", skipped), slog.Bool("changed", true))
 	return &ReconcileResult{PlansSeen: rendered, PlansChanged: len(changedIDs), Changed: true}, nil
+}
+
+func (r *Reconciler) setDefaultRepoFromConfig(cfg *model.Config) {
+	if cfg == nil || len(cfg.Repos) == 0 {
+		return
+	}
+	current := strings.TrimSpace(r.builder.opts.DefaultRepo)
+	if current != "" && cfg.RepoExists(current) {
+		return
+	}
+	r.builder.opts.DefaultRepo = cfg.Repos[0].ID
 }
 
 // ReconcileResult summarises the reconcile run.

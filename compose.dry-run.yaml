@@ -17,6 +17,18 @@ services:
       backrest.pre: "echo quiesce-start"
       backrest.post: "echo quiesce-end"
 
+  demo-echo-lite:
+    image: hashicorp/http-echo:1.0.0
+    command:
+      - -listen
+      - :8081
+      - -text
+      - "Hello from demo-lite"
+    volumes:
+      - demo-lite-data:/srv/data
+    labels:
+      backrest.enable: "true"
+
   sidecar:
     build:
       context: .
@@ -37,3 +49,4 @@ services:
 
 volumes:
   demo-data:
+  demo-lite-data:

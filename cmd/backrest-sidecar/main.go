@@ -44,6 +44,7 @@ type commonFlags struct {
 	volumePrefix       string
 	defaultRepo        string
 	defaultSchedule    string
+	defaultRetention   string
 	includeProjectName bool
 	excludeBindMounts  bool
 	restartTimeout     time.Duration
@@ -58,6 +59,7 @@ func newRootCmd() *cobra.Command {
 		dockerRoot:        "/var/lib/docker",
 		volumePrefix:      envOr("BACKREST_VOLUME_PREFIX", "/var/lib/docker/volumes"),
 		defaultRepo:       "default",
+		defaultRetention:  envOr("BACKREST_DEFAULT_RETENTION", "daily=7,weekly=4"),
 		defaultSchedule:   "0 2 * * *",
 		backrestContainer: "backrest",
 		restartTimeout:    15 * time.Second,
@@ -125,6 +127,7 @@ func bindReconcileFlags(cmd *cobra.Command, flags *commonFlags) {
 	cmd.Flags().StringVar(&flags.volumePrefix, "volume-prefix", flags.volumePrefix, "rewrite derived volume sources to this prefix (e.g. /docker_volumes)")
 	cmd.Flags().StringVar(&flags.defaultRepo, "default-repo", flags.defaultRepo, "fallback Backrest repo id")
 	cmd.Flags().StringVar(&flags.defaultSchedule, "default-schedule", flags.defaultSchedule, "fallback cron schedule")
+	cmd.Flags().StringVar(&flags.defaultRetention, "default-retention", flags.defaultRetention, "fallback retention spec (e.g. daily=7,weekly=4)")
 	cmd.Flags().BoolVar(&flags.excludeBindMounts, "exclude-bind-mounts", flags.excludeBindMounts, "derive sources only from named volumes")
 	cmd.Flags().BoolVar(&flags.includeProjectName, "include-project-name", flags.includeProjectName, "prefix plan IDs with compose project")
 	cmd.Flags().DurationVar(&flags.restartTimeout, "restart-timeout", flags.restartTimeout, "Backrest restart timeout")
@@ -147,6 +150,7 @@ func runReconcile(cmd *cobra.Command, flags commonFlags) error {
 		VolumePrefix:       flags.volumePrefix,
 		DefaultRepo:        flags.defaultRepo,
 		DefaultSchedule:    flags.defaultSchedule,
+		DefaultRetention:   flags.defaultRetention,
 		IncludeProjectName: flags.includeProjectName,
 		ExcludeBindMounts:  flags.excludeBindMounts,
 		Logger:             logger,
@@ -190,6 +194,7 @@ func runDaemon(cmd *cobra.Command, flags commonFlags, interval time.Duration, wi
 			VolumePrefix:       flags.volumePrefix,
 			DefaultRepo:        flags.defaultRepo,
 			DefaultSchedule:    flags.defaultSchedule,
+			DefaultRetention:   flags.defaultRetention,
 			IncludeProjectName: flags.includeProjectName,
 			ExcludeBindMounts:  flags.excludeBindMounts,
 			Logger:             logger,

@@ -18,6 +18,7 @@ type PlanBuilderOptions struct {
 	VolumePrefix       string
 	DefaultRepo        string
 	DefaultSchedule    string
+	DefaultRetention   string
 	IncludeProjectName bool
 	ExcludeBindMounts  bool
 }
@@ -59,6 +60,11 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 		Post: model.ParseCSV(container.Labels[model.LabelHooksPost]),
 	}
 
+	retention := strings.TrimSpace(container.Labels[model.LabelRetentionKeep])
+	if retention == "" {
+		retention = strings.TrimSpace(b.opts.DefaultRetention)
+	}
+
 	plan := &model.Plan{
 		ID:        id,
 		Repo:      repo,
@@ -66,7 +72,7 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 		Sources:   sources,
 		Exclude:   exclude,
 		Hooks:     hooks,
-		Retention: model.RetSpec{Spec: strings.TrimSpace(container.Labels[model.LabelRetentionKeep])},
+		Retention: model.RetSpec{Spec: retention},
 	}
 	plan.Normalize()
 	return plan, nil

@@ -17,14 +17,9 @@ services:
       - "9898:9898"
 
   sidecar:
-    image: ghcr.io/bioshazard/backrest-auto-labels:latest
+    image: ghcr.io/bioshazard/backrest-auto-labels:master
     container_name: backrest-sidecar
     restart: unless-stopped
-    environment:
-      BACKREST_CONFIG: /etc/backrest/config.json
-      BACKREST_VOLUME_PREFIX: /var/lib/docker/volumes
-      BACKREST_DEFAULT_RETENTION: daily=7,weekly=4
-      BACKREST_PLAN_ID_PREFIX: backrest_sidecar_
     volumes:
       - backrest-config:/etc/backrest
       - /var/run/docker.sock:/var/run/docker.sock:ro

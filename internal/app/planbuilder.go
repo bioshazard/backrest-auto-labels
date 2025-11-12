@@ -50,32 +50,33 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 		return nil, fmt.Errorf("unable to derive plan id for container %s", container.Name)
 	}
 
-	sources := b.sources(container)
-	if len(sources) == 0 {
-		return nil, fmt.Errorf("container %s has no derived sources; add backrest.paths.include", container.Name)
+	paths := b.paths(container)
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("container %s has no derived paths; add backrest.paths.include", container.Name)
 	}
 
-	exclude := model.ParseCSV(container.Labels[model.LabelPathsExclude])
-	hooks := model.Hooks{
-		Pre:  model.ParseCSV(container.Labels[model.LabelHooksPre]),
-		Post: model.ParseCSV(container.Labels[model.LabelHooksPost]),
-	}
-	template := strings.TrimSpace(container.Labels[model.LabelHooksTemplate])
-	b.applyHookTemplate(template, container, &hooks)
+	pathsExclude := model.ParseCSV(container.Labels[model.LabelPathsExclude])
 
-	retention := strings.TrimSpace(container.Labels[model.LabelRetentionKeep])
-	if retention == "" {
-		retention = strings.TrimSpace(b.opts.DefaultRetention)
+	hooks := b.buildHooks(container)
+
+	retSpec := strings.TrimSpace(container.Labels[model.LabelRetentionKeep])
+	if retSpec == "" {
+		retSpec = strings.TrimSpace(b.opts.DefaultRetention)
 	}
+	var retention model.PlanRetention
+	retention.RetentionFromSpec(retSpec)
 
 	plan := &model.Plan{
-		ID:        id,
-		Repo:      repo,
-		Schedule:  schedule,
-		Sources:   sources,
-		Exclude:   exclude,
+		ID:           id,
+		Repo:         repo,
+		Paths:        paths,
+		PathsExclude: pathsExclude,
+		Schedule: model.PlanSchedule{
+			Cron:  schedule,
+			Clock: "CLOCK_LOCAL",
+		},
+		Retention: retention,
 		Hooks:     hooks,
-		Retention: model.RetSpec{Spec: retention},
 	}
 	plan.Normalize()
 	return plan, nil
@@ -115,17 +116,50 @@ func (b *PlanBuilder) basePlanID(container docker.Container) string {
 	return sanitizeID(raw)
 }
 
-func (b *PlanBuilder) applyHookTemplate(template string, container docker.Container, hooks *model.Hooks) {
-	if hooks == nil || len(hooks.Pre) > 0 || len(hooks.Post) > 0 {
-		return
+func (b *PlanBuilder) buildHooks(container docker.Container) []model.PlanHook {
+	pre := model.ParseCSV(container.Labels[model.LabelHooksPre])
+	post := model.ParseCSV(container.Labels[model.LabelHooksPost])
+	hooks := make([]model.PlanHook, 0, len(pre)+len(post)+2)
+	for _, cmd := range pre {
+		hooks = append(hooks, model.PlanHook{
+			Conditions:    []string{"CONDITION_SNAPSHOT_START"},
+			ActionCommand: model.HookCommand{Command: cmd},
+		})
 	}
+	for _, cmd := range post {
+		hooks = append(hooks, model.PlanHook{
+			Conditions:    []string{"CONDITION_SNAPSHOT_END"},
+			ActionCommand: model.HookCommand{Command: cmd},
+		})
+	}
+	if len(hooks) == 0 {
+		if templHooks := b.templateHooks(strings.TrimSpace(container.Labels[model.LabelHooksTemplate]), container); len(templHooks) > 0 {
+			hooks = append(hooks, templHooks...)
+		}
+	}
+	return hooks
+}
+
+func (b *PlanBuilder) templateHooks(template string, container docker.Container) []model.PlanHook {
 	switch strings.ToLower(template) {
 	case "", "none":
-		return
+		return nil
 	case "simple-stop-start", "stop-start", "quiesce-stop-start":
 		name := preferContainerName(container)
-		hooks.Pre = []string{fmt.Sprintf("docker stop %s", name)}
-		hooks.Post = []string{fmt.Sprintf("docker start %s", name)}
+		stopCmd := fmt.Sprintf("docker stop %s", name)
+		startCmd := fmt.Sprintf("docker start %s", name)
+		return []model.PlanHook{
+			{
+				Conditions:    []string{"CONDITION_SNAPSHOT_START"},
+				ActionCommand: model.HookCommand{Command: stopCmd},
+			},
+			{
+				Conditions:    []string{"CONDITION_SNAPSHOT_END"},
+				ActionCommand: model.HookCommand{Command: startCmd},
+			},
+		}
+	default:
+		return nil
 	}
 }
 
@@ -141,7 +175,7 @@ func preferContainerName(container docker.Container) string {
 	return id
 }
 
-func (b *PlanBuilder) sources(container docker.Container) []string {
+func (b *PlanBuilder) paths(container docker.Container) []string {
 	if labels := model.ParseCSV(container.Labels[model.LabelPathsInclude]); len(labels) > 0 {
 		return b.rewriteLabeledPaths(labels, container.Mounts)
 	}

@@ -36,11 +36,23 @@ func TestPlanBuilderHookTemplateStopStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build plan: %v", err)
 	}
-	if got, want := pl.Hooks.Pre, []string{"docker stop demo-echo-lite-1"}; !slicesEqual(got, want) {
-		t.Fatalf("pre hooks mismatch: got %v want %v", got, want)
+	if len(pl.Hooks) != 2 {
+		t.Fatalf("expected 2 hooks, got %d", len(pl.Hooks))
 	}
-	if got, want := pl.Hooks.Post, []string{"docker start demo-echo-lite-1"}; !slicesEqual(got, want) {
-		t.Fatalf("post hooks mismatch: got %v want %v", got, want)
+	expect := []struct {
+		cond string
+		cmd  string
+	}{
+		{"CONDITION_SNAPSHOT_START", "docker stop demo-echo-lite-1"},
+		{"CONDITION_SNAPSHOT_END", "docker start demo-echo-lite-1"},
+	}
+	for i, hook := range pl.Hooks {
+		if len(hook.Conditions) != 1 || hook.Conditions[0] != expect[i].cond {
+			t.Fatalf("hook %d condition mismatch: got %v want %s", i, hook.Conditions, expect[i].cond)
+		}
+		if hook.ActionCommand.Command != expect[i].cmd {
+			t.Fatalf("hook %d command mismatch: got %s want %s", i, hook.ActionCommand.Command, expect[i].cmd)
+		}
 	}
 }
 
@@ -70,22 +82,14 @@ func TestPlanBuilderHookTemplateDoesNotOverrideManualHooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build plan: %v", err)
 	}
-	if got, want := pl.Hooks.Pre, []string{"echo noop"}; !slicesEqual(got, want) {
-		t.Fatalf("pre hooks mismatch: got %v want %v", got, want)
+	if len(pl.Hooks) != 1 {
+		t.Fatalf("expected 1 hook, got %d", len(pl.Hooks))
 	}
-	if len(pl.Hooks.Post) != 0 {
-		t.Fatalf("expected no post hooks, got %v", pl.Hooks.Post)
+	hook := pl.Hooks[0]
+	if len(hook.Conditions) != 1 || hook.Conditions[0] != "CONDITION_SNAPSHOT_START" {
+		t.Fatalf("unexpected conditions: %v", hook.Conditions)
 	}
-}
-
-func slicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
+	if hook.ActionCommand.Command != "echo noop" {
+		t.Fatalf("unexpected command: %s", hook.ActionCommand.Command)
 	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

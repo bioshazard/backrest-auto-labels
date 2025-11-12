@@ -129,7 +129,7 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 		r.log.Info("plan.rendered",
 			slog.String("plan_id", plan.ID),
 			slog.String("repo", plan.Repo),
-			slog.Any("sources", plan.Sources),
+			slog.Any("paths", plan.Paths),
 			slog.Bool("dry_run", r.dryRun),
 		)
 	}

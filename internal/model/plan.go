@@ -4,29 +4,46 @@ import (
 	"encoding/json"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 // Plan represents a Backrest plan.
 type Plan struct {
-	ID        string   `json:"id"`
-	Repo      string   `json:"repo"`
-	Schedule  string   `json:"schedule"`
-	Sources   []string `json:"sources"`
-	Exclude   []string `json:"exclude,omitempty"`
-	Hooks     Hooks    `json:"hooks,omitempty"`
-	Retention RetSpec  `json:"retention,omitempty"`
+	ID           string        `json:"id"`
+	Repo         string        `json:"repo"`
+	Paths        []string      `json:"paths"`
+	PathsExclude []string      `json:"pathsExclude,omitempty"`
+	Schedule     PlanSchedule  `json:"schedule"`
+	Retention    PlanRetention `json:"retention"`
+	Hooks        []PlanHook    `json:"hooks,omitempty"`
 }
 
-// Hooks describe pre/post commands.
-type Hooks struct {
-	Pre  []string `json:"pre,omitempty"`
-	Post []string `json:"post,omitempty"`
+type PlanSchedule struct {
+	Cron  string `json:"cron"`
+	Clock string `json:"clock"`
 }
 
-// RetSpec stores the retention spec string.
-type RetSpec struct {
-	Spec string `json:"spec,omitempty"`
+type PlanRetention struct {
+	PolicyTimeBucketed *RetentionBuckets `json:"policyTimeBucketed,omitempty"`
+	spec               string
+}
+
+type RetentionBuckets struct {
+	Hourly  int `json:"hourly,omitempty"`
+	Daily   int `json:"daily,omitempty"`
+	Weekly  int `json:"weekly,omitempty"`
+	Monthly int `json:"monthly,omitempty"`
+	Yearly  int `json:"yearly,omitempty"`
+}
+
+type PlanHook struct {
+	Conditions    []string    `json:"conditions"`
+	ActionCommand HookCommand `json:"actionCommand"`
+}
+
+type HookCommand struct {
+	Command string `json:"command"`
 }
 
 // Repo represents a Backrest repo entry.
@@ -39,8 +56,9 @@ type Repo struct {
 
 // Config is the Backrest config file model.
 type Config struct {
-	Repos []Repo `json:"repos"`
-	Plans []Plan `json:"plans"`
+	Repos  []Repo `json:"repos"`
+	Plans  []Plan `json:"plans"`
+	extras map[string]json.RawMessage
 }
 
 // EnsureNonNil ensures slices/maps are initialized.
@@ -51,6 +69,20 @@ func (c *Config) EnsureNonNil() {
 	if c.Plans == nil {
 		c.Plans = []Plan{}
 	}
+	if c.extras == nil {
+		c.extras = make(map[string]json.RawMessage)
+	}
+}
+
+// Extras returns raw top-level fields outside repos/plans.
+func (c *Config) Extras() map[string]json.RawMessage {
+	c.EnsureNonNil()
+	return c.extras
+}
+
+// SetExtras replaces the raw extras map.
+func (c *Config) SetExtras(raw map[string]json.RawMessage) {
+	c.extras = raw
 }
 
 // RepoExists returns true if repo ID exists.
@@ -111,17 +143,33 @@ func (c *Config) Normalize() {
 
 // Normalize sorts slices for deterministic output.
 func (p *Plan) Normalize() {
-	slices.Sort(p.Sources)
-	p.Sources = uniqueStrings(p.Sources)
+	slices.Sort(p.Paths)
+	p.Paths = uniqueStrings(p.Paths)
 
-	slices.Sort(p.Exclude)
-	p.Exclude = uniqueStrings(p.Exclude)
+	slices.Sort(p.PathsExclude)
+	p.PathsExclude = uniqueStrings(p.PathsExclude)
 
-	slices.Sort(p.Hooks.Pre)
-	p.Hooks.Pre = uniqueStrings(p.Hooks.Pre)
-
-	slices.Sort(p.Hooks.Post)
-	p.Hooks.Post = uniqueStrings(p.Hooks.Post)
+	hookRank := func(conditions []string) int {
+		if len(conditions) == 0 {
+			return 99
+		}
+		switch conditions[0] {
+		case "CONDITION_SNAPSHOT_START":
+			return 0
+		case "CONDITION_SNAPSHOT_END":
+			return 1
+		default:
+			return 2
+		}
+	}
+	sort.Slice(p.Hooks, func(i, j int) bool {
+		ri := hookRank(p.Hooks[i].Conditions)
+		rj := hookRank(p.Hooks[j].Conditions)
+		if ri == rj {
+			return p.Hooks[i].ActionCommand.Command < p.Hooks[j].ActionCommand.Command
+		}
+		return ri < rj
+	})
 }
 
 func uniqueStrings(in []string) []string {
@@ -179,4 +227,48 @@ func ParseCSV(raw string) []string {
 		}
 	}
 	return out
+}
+
+// RetentionFromSpec converts "daily=7" style specs into buckets.
+func (p *PlanRetention) RetentionFromSpec(spec string) {
+	p.spec = spec
+	if spec == "" {
+		p.PolicyTimeBucketed = nil
+		return
+	}
+	buckets := &RetentionBuckets{}
+	parts := strings.Split(spec, ",")
+	for _, part := range parts {
+		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(kv[0]))
+		val := strings.TrimSpace(kv[1])
+		n, err := strconv.Atoi(val)
+		if err != nil {
+			continue
+		}
+		switch key {
+		case "hourly":
+			buckets.Hourly = n
+		case "daily":
+			buckets.Daily = n
+		case "weekly":
+			buckets.Weekly = n
+		case "monthly":
+			buckets.Monthly = n
+		case "yearly":
+			buckets.Yearly = n
+		}
+	}
+	if *buckets == (RetentionBuckets{}) {
+		p.PolicyTimeBucketed = nil
+		return
+	}
+	p.PolicyTimeBucketed = buckets
+}
+
+func (p PlanRetention) Spec() string {
+	return p.spec
 }

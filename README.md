@@ -51,8 +51,10 @@ Customize the tags, env vars, and mounts to match your environment, but always s
 | `backrest.repo` | override repo id (defaults to first repo in config) |
 | `backrest.schedule` | cron schedule (default `0 2 * * *`) |
 | `backrest.paths.include` | comma-separated container paths |
+| `backrest.paths.exclude` | comma-separated paths to skip |
 | `backrest.keep` | retention spec (default `daily=7,weekly=4`) |
-| `backrest.hooks.template` | `simple-stop-start` autogenerates stop/start hooks |
+| `backrest.pre` / `backrest.post` | CSV commands → snapshot start/end hooks |
+| `backrest.hooks.template` | `simple-stop-start` autogenerates `docker stop/start <container>` hooks |
 
 See `docs/design-init.md` for the full matrix.
 

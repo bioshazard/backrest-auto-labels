@@ -81,10 +81,15 @@ Single JSON file with:
       "id": "proj_service",           // unique, deterministic
       "repo": "default",
       "schedule": "0 2 * * *",
-      "sources": ["/host/path1", "/host/path2"],
+      "paths": ["/host/path1", "/host/path2"],
       "exclude": ["/host/path1/cache"],
       "hooks": { "pre": ["..."], "post": ["..."] },
-      "retention": { "spec": "daily=7,weekly=4" }   // pass-through for sidecar forget loop
+      "retention": {
+        "policyTimeBucketed": {
+          "daily": 7,
+          "weekly": 4
+        }
+      }
     }
   ]
 }
@@ -103,10 +108,10 @@ Single JSON file with:
    * `id`: `${project}_${service}` if labels exist, else container name, all sanitized and prefixed (default `backrest_sidecar_`). Override with `--plan-id-prefix` / `BACKREST_PLAN_ID_PREFIX`.
    * `repo`: from `backrest.repo` or default; if the configured default is empty/unknown, the sidecar falls back to the first repo declared in the current config.
    * `schedule`: from label or default.
-   * `sources`: from `backrest.paths.include` or derived from mounts; label paths that match a container mount/volume automatically rewrite to the host path (default `/var/lib/docker/volumes/...` unless `--volume-prefix` overrides).
+* `paths`: from `backrest.paths.include` or derived from mounts; label paths that match a container mount/volume automatically rewrite to the host path (default `/var/lib/docker/volumes/...` unless `--volume-prefix` overrides).
    * `exclude`: from label.
    * `hooks.pre/post`: from label(s) (CSV → array) or the template label `backrest.hooks.template=simple-stop-start`, which auto-injects `docker stop <container>` before and `docker start <container>` after the plan when no explicit hooks are provided.
-   * `retention.spec`: raw string from `backrest.keep` or the configured default (defaults to `daily=7,weekly=4`).
+* `retention.policyTimeBucketed`: derived from `backrest.keep` (e.g. `daily=7,weekly=4`) and used both for Backrest UI and the sidecar’s restic forget loop.
 3. **Merge** into existing config:
 
    * Ensure repo exists (warn if missing; do not create).
@@ -185,7 +190,7 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
 
 1. `make build` – produces `./bin/backrest-sidecar`.
 2. `make dry-run CONFIG=/etc/backrest/config.json RUN_FLAGS="--docker-root /var/lib/docker --default-repo default --include-project-name"` – reuses production flags but never writes the config.
-3. Inspect the structured logs (one per candidate plan) to confirm the existing labels resolve to the expected sources/hooks.
+3. Inspect the structured logs (one per candidate plan) to confirm the existing labels resolve to the expected paths/hooks.
 4. Use `testdata/example-sidecar.config.json` (the exact JSON shape the sidecar reads/writes) for local runs; `testdata/example-backrest.config.json` remains as an untouched export for reference.
 5. Helper scripts under `scripts/` wrap the common flows:
    * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
@@ -198,7 +203,7 @@ Example output when the `db` service from the section below is already labeled:
 ```console
 $ make dry-run CONFIG=/etc/backrest/config.json RUN_FLAGS="--docker-root /var/lib/docker"
 ./bin/backrest-sidecar reconcile --dry-run --config /etc/backrest/config.json --docker-root /var/lib/docker
-{"level":"info","action":"plan.rendered","plan_id":"stack_db","sources":["/var/lib/docker/volumes/stack_pgdata/_data"],"hooks":{"pre":["sh -c 'docker stop $SELF'"],"post":["sh -c 'docker start $SELF'"]},"retention":{"spec":"daily=7,weekly=4,monthly=6"}}
+{"level":"info","action":"plan.rendered","plan_id":"stack_db","paths":["/var/lib/docker/volumes/stack_pgdata/_data"],"hooks":[{"conditions":["CONDITION_SNAPSHOT_START"],"actionCommand":{"command":"sh -c 'docker stop $SELF'"}}],"retention":{"policyTimeBucketed":{"daily":7,"weekly":4,"monthly":6}}}
 {"level":"info","action":"dry-run.complete","plans_seen":1,"plans_changed":1,"config":"/etc/backrest/config.json"}
 ```
 
@@ -235,7 +240,7 @@ Sidecar does this in `backup-once`. `--exclude-bind-mounts` maps to `EXCLUDE_BIN
 3. For each:
 
    * Read compose labels: `com.docker.compose.project`, `com.docker.compose.service`.
-   * Build plan (derive sources if none specified).
+   * Build plan (derive paths if none specified).
 4. Merge: map `[plan.id] = plan`.
 5. If diff:
 
@@ -243,7 +248,7 @@ Sidecar does this in `backup-once`. `--exclude-bind-mounts` maps to `EXCLUDE_BIN
    * `--apply` → restart Backrest.
 6. Metrics/log summary: totals, changes, skipped (no repo), errors.
 
-**Derive sources**
+**Derive paths**
 
 * For each `Mount`:
 
@@ -319,30 +324,38 @@ internal/util/fs.go                // atomic write, lockfile
 
 ```go
 type Plan struct {
-  ID        string   `json:"id"`
-  Repo      string   `json:"repo"`
-  Schedule  string   `json:"schedule"`
-  Sources   []string `json:"sources"`
-  Exclude   []string `json:"exclude,omitempty"`
-  Hooks     Hooks    `json:"hooks,omitempty"`
-  Retention RetSpec  `json:"retention,omitempty"`
+  ID           string        `json:"id"`
+  Repo         string        `json:"repo"`
+  Paths        []string      `json:"paths"`
+  PathsExclude []string      `json:"pathsExclude,omitempty"`
+  Schedule     PlanSchedule  `json:"schedule"`
+  Retention    PlanRetention `json:"retention"`
+  Hooks        []PlanHook    `json:"hooks,omitempty"`
 }
-type Hooks struct {
-  Pre  []string `json:"pre,omitempty"`
-  Post []string `json:"post,omitempty"`
+
+type PlanSchedule struct {
+  Cron  string `json:"cron"`
+  Clock string `json:"clock"`
 }
-type RetSpec struct {
-  Spec string `json:"spec,omitempty"` // pass-through label
+
+type PlanRetention struct {
+  PolicyTimeBucketed *RetentionBuckets `json:"policyTimeBucketed,omitempty"`
 }
+
+type PlanHook struct {
+  Conditions    []string    `json:"conditions"`
+  ActionCommand HookCommand `json:"actionCommand"`
+}
+
 type Config struct {
   Repos []Repo `json:"repos"`
   Plans []Plan `json:"plans"`
 }
+
 type Repo struct {
   ID   string            `json:"id"`
-  Type string            `json:"type"`
-  URL  string            `json:"url"`
-  Env  map[string]string `json:"env,omitempty"`
+  URI  string            `json:"uri"`
+  Env  []string          `json:"env,omitempty"`
 }
 ```
 

@@ -19,6 +19,7 @@ type PlanBuilderOptions struct {
 	DefaultRepo        string
 	DefaultSchedule    string
 	DefaultRetention   string
+	PlanIDPrefix       string
 	IncludeProjectName bool
 	ExcludeBindMounts  bool
 }
@@ -79,23 +80,37 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 }
 
 func (b *PlanBuilder) planID(container docker.Container) string {
+	base := b.basePlanID(container)
+	if base == "" {
+		return ""
+	}
+	if b.opts.PlanIDPrefix == "" {
+		return base
+	}
+	return sanitizeID(b.opts.PlanIDPrefix + base)
+}
+
+func (b *PlanBuilder) basePlanID(container docker.Container) string {
 	project := strings.TrimSpace(container.Project)
 	service := strings.TrimSpace(container.Service)
+	var raw string
 	switch {
 	case project != "" && service != "" && b.opts.IncludeProjectName:
-		return sanitizeID(project + "_" + service)
+		raw = project + "_" + service
 	case service != "":
-		return sanitizeID(service)
+		raw = service
 	default:
 		if container.Name != "" {
-			return sanitizeID(container.Name)
+			raw = container.Name
+			break
 		}
 		id := container.ID
 		if len(id) > 12 {
 			id = id[:12]
 		}
-		return sanitizeID(id)
+		raw = id
 	}
+	return sanitizeID(raw)
 }
 
 func (b *PlanBuilder) sources(container docker.Container) []string {

@@ -100,7 +100,7 @@ Single JSON file with:
    * `label=backrest.enable=true`
 2. **Build plan**:
 
-   * `id`: `${project}_${service}` if labels exist, else container name.
+   * `id`: `${project}_${service}` if labels exist, else container name, all sanitized and prefixed (default `backrest_sidecar_`). Override with `--plan-id-prefix` / `BACKREST_PLAN_ID_PREFIX`.
    * `repo`: from `backrest.repo` or default; if the configured default is empty/unknown, the sidecar falls back to the first repo declared in the current config.
    * `schedule`: from label or default.
    * `sources`: from `backrest.paths.include` or derived from mounts; label paths that match a container mount/volume automatically rewrite to the host path (default `/var/lib/docker/volumes/...` unless `--volume-prefix` overrides).
@@ -139,6 +139,7 @@ backrest-sidecar
     --default-repo default
     --default-schedule "0 2 * * *"
     --default-retention "daily=7,weekly=4"
+    --plan-id-prefix "backrest_sidecar_"
     --exclude-bind-mounts    # ignore bind mounts, volumes only
     --include-project-name   # include compose project in plan id
     --dry-run
@@ -183,6 +184,7 @@ The command exits with code `2` (no write performed) but prints exactly how the 
 * `BACKREST_CONFIG` (path to config.json; overrides `--config`)
 * `BACKREST_VOLUME_PREFIX` (defaults to `/var/lib/docker/volumes`, override when you bind that tree somewhere else such as `/docker_volumes`; labeled paths that refer to container mountpoints rewrite through this prefix)
 * `BACKREST_DEFAULT_RETENTION` (optional) to override the fallback `daily=7,weekly=4`
+* `BACKREST_PLAN_ID_PREFIX` (defaults to `backrest_sidecar_`)
 * `RESTIC_*` in `--rcb-env-file` for backup-once mode
 
 ## rcb one-shot (Option B)

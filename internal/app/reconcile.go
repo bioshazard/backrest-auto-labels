@@ -28,6 +28,7 @@ type ReconcileOptions struct {
 	DefaultRepo        string
 	DefaultSchedule    string
 	DefaultRetention   string
+	PlanIDPrefix       string
 	IncludeProjectName bool
 	ExcludeBindMounts  bool
 	Logger             *slog.Logger
@@ -64,6 +65,7 @@ func NewReconciler(opts ReconcileOptions) (*Reconciler, error) {
 		DefaultRepo:        opts.DefaultRepo,
 		DefaultSchedule:    opts.DefaultSchedule,
 		DefaultRetention:   opts.DefaultRetention,
+		PlanIDPrefix:       opts.PlanIDPrefix,
 		IncludeProjectName: opts.IncludeProjectName,
 		ExcludeBindMounts:  opts.ExcludeBindMounts,
 	})

@@ -45,6 +45,7 @@ type commonFlags struct {
 	defaultRepo        string
 	defaultSchedule    string
 	defaultRetention   string
+	planIDPrefix       string
 	includeProjectName bool
 	excludeBindMounts  bool
 	restartTimeout     time.Duration
@@ -61,6 +62,7 @@ func newRootCmd() *cobra.Command {
 		defaultRepo:       "default",
 		defaultRetention:  envOr("BACKREST_DEFAULT_RETENTION", "daily=7,weekly=4"),
 		defaultSchedule:   "0 2 * * *",
+		planIDPrefix:      envOr("BACKREST_PLAN_ID_PREFIX", "backrest_sidecar_"),
 		backrestContainer: "backrest",
 		restartTimeout:    15 * time.Second,
 		logFormat:         "json",
@@ -128,6 +130,7 @@ func bindReconcileFlags(cmd *cobra.Command, flags *commonFlags) {
 	cmd.Flags().StringVar(&flags.defaultRepo, "default-repo", flags.defaultRepo, "fallback Backrest repo id")
 	cmd.Flags().StringVar(&flags.defaultSchedule, "default-schedule", flags.defaultSchedule, "fallback cron schedule")
 	cmd.Flags().StringVar(&flags.defaultRetention, "default-retention", flags.defaultRetention, "fallback retention spec (e.g. daily=7,weekly=4)")
+	cmd.Flags().StringVar(&flags.planIDPrefix, "plan-id-prefix", flags.planIDPrefix, "prefix applied to rendered plan ids")
 	cmd.Flags().BoolVar(&flags.excludeBindMounts, "exclude-bind-mounts", flags.excludeBindMounts, "derive sources only from named volumes")
 	cmd.Flags().BoolVar(&flags.includeProjectName, "include-project-name", flags.includeProjectName, "prefix plan IDs with compose project")
 	cmd.Flags().DurationVar(&flags.restartTimeout, "restart-timeout", flags.restartTimeout, "Backrest restart timeout")
@@ -151,6 +154,7 @@ func runReconcile(cmd *cobra.Command, flags commonFlags) error {
 		DefaultRepo:        flags.defaultRepo,
 		DefaultSchedule:    flags.defaultSchedule,
 		DefaultRetention:   flags.defaultRetention,
+		PlanIDPrefix:       flags.planIDPrefix,
 		IncludeProjectName: flags.includeProjectName,
 		ExcludeBindMounts:  flags.excludeBindMounts,
 		Logger:             logger,
@@ -195,6 +199,7 @@ func runDaemon(cmd *cobra.Command, flags commonFlags, interval time.Duration, wi
 			DefaultRepo:        flags.defaultRepo,
 			DefaultSchedule:    flags.defaultSchedule,
 			DefaultRetention:   flags.defaultRetention,
+			PlanIDPrefix:       flags.planIDPrefix,
 			IncludeProjectName: flags.includeProjectName,
 			ExcludeBindMounts:  flags.excludeBindMounts,
 			Logger:             logger,

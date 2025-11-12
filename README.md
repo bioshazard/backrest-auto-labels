@@ -44,6 +44,18 @@ volumes:
 ```
 Customize the tags, env vars, and mounts to match your environment, but always share the config volume between Backrest and the sidecar.
 
+Need the sidecar to only back up the config directory? Add the minimal labels below to the `backrest` service so it opts in and constrains paths explicitly:
+
+```yaml
+services:
+  backrest:
+    labels:
+      backrest.enable: "true"
+      backrest.paths.include: "/config"
+```
+
+When `backrest.paths.include` matches a container mount, the sidecar rewrites it to the host-side path (for example `/var/lib/docker/volumes/backrest-config/_data` by default), so you capture just the config while ignoring other mounts.
+
 ### Manage the compose stack
 
 Use the provided Make target to run Docker Compose with a stable project name (`backrest-dev`):

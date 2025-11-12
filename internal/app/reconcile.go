@@ -112,6 +112,7 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 	rendered := 0
 	skipped := 0
 	plans := make([]model.Plan, 0, len(containers))
+	renderedPlans := make([]model.Plan, 0, len(containers))
 	for _, ctr := range containers {
 		plan, err := r.builder.Build(ctr)
 		if err != nil {
@@ -125,18 +126,32 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 			continue
 		}
 		plans = append(plans, *plan)
+		renderedPlans = append(renderedPlans, *plan)
 		rendered++
-		r.log.Info("plan.rendered",
+	}
+
+	changed, changedIDs := cfg.UpsertPlans(plans)
+
+	changedSet := make(map[string]struct{}, len(changedIDs))
+	for _, id := range changedIDs {
+		changedSet[id] = struct{}{}
+	}
+	for _, plan := range renderedPlans {
+		args := []any{
 			slog.String("plan_id", plan.ID),
 			slog.String("repo", plan.Repo),
 			slog.Any("paths", plan.Paths),
 			slog.Bool("dry_run", r.dryRun),
-		)
+		}
+		if _, ok := changedSet[plan.ID]; ok {
+			r.log.Info("plan.rendered", args...)
+		} else {
+			r.log.Debug("plan.rendered", args...)
+		}
 	}
 
-	changed, changedIDs := cfg.UpsertPlans(plans)
 	if !changed {
-		r.log.Info("reconcile.complete", slog.Int("rendered", rendered), slog.Int("skipped", skipped), slog.Bool("changed", false))
+		r.log.Debug("reconcile.complete", slog.Int("rendered", rendered), slog.Int("skipped", skipped), slog.Bool("changed", false))
 		return &ReconcileResult{PlansSeen: rendered, PlansChanged: 0, Changed: false}, nil
 	}
 

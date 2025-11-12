@@ -4,11 +4,13 @@ services:
     command: ["-listen", ":8080", "-text", "Hello from demo"]
     volumes:
       - demo-data:/var/demo-data
+      - demo-cache:/var/demo-cache
+      - demo-config:/var/demo-config
     labels:
       backrest.enable: "true"
       backrest.repo: "sample-repo"
-      backrest.schedule: "15 2 * * *"
-      backrest.paths.include: "/var/demo-data"
+      backrest.schedule: "15 4 * * *"
+      backrest.paths.include: "/var/demo-config"
       backrest.keep: "daily=7,weekly=4"
       backrest.snapshot-start: "echo quiesce-start"
       backrest.snapshot-end: "echo quiesce-end"
@@ -43,3 +45,5 @@ services:
 volumes:
   demo-data:
   demo-lite-data:
+  demo-cache:
+  demo-config:

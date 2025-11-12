@@ -34,7 +34,7 @@ DOCKER_ARGS ?= daemon --config /etc/backrest/config.json --with-events --apply
 
 BIN := $(BIN_DIR)/$(BINARY)
 
-.PHONY: build run dry-run docker-build docker-run docker-push fmt clean
+.PHONY: build run dry-run docker-build docker-run docker-push fmt test clean
 
 build:
 	@mkdir -p $(BIN_DIR)
@@ -62,6 +62,9 @@ docker-push:
 
 fmt:
 	$(GO_CMD) fmt ./...
+
+test:
+	$(GO_CMD) test ./...
 
 clean:
 	rm -rf $(BIN_DIR)

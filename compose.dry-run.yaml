@@ -10,6 +10,7 @@ services:
       - demo-data:/var/demo-data
     labels:
       backrest.enable: "true"
+      backrest.hooks.template: "simple-stop-start"
       backrest.repo: "sample-repo"
       backrest.schedule: "15 2 * * *"
       backrest.paths.include: "/var/demo-data"

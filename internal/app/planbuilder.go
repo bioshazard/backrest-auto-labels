@@ -60,6 +60,8 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 		Pre:  model.ParseCSV(container.Labels[model.LabelHooksPre]),
 		Post: model.ParseCSV(container.Labels[model.LabelHooksPost]),
 	}
+	template := strings.TrimSpace(container.Labels[model.LabelHooksTemplate])
+	b.applyHookTemplate(template, container, &hooks)
 
 	retention := strings.TrimSpace(container.Labels[model.LabelRetentionKeep])
 	if retention == "" {
@@ -111,6 +113,32 @@ func (b *PlanBuilder) basePlanID(container docker.Container) string {
 		raw = id
 	}
 	return sanitizeID(raw)
+}
+
+func (b *PlanBuilder) applyHookTemplate(template string, container docker.Container, hooks *model.Hooks) {
+	if hooks == nil || len(hooks.Pre) > 0 || len(hooks.Post) > 0 {
+		return
+	}
+	switch strings.ToLower(template) {
+	case "", "none":
+		return
+	case "simple-stop-start", "stop-start", "quiesce-stop-start":
+		name := preferContainerName(container)
+		hooks.Pre = []string{fmt.Sprintf("docker stop %s", name)}
+		hooks.Post = []string{fmt.Sprintf("docker start %s", name)}
+	}
+}
+
+func preferContainerName(container docker.Container) string {
+	name := strings.TrimSpace(container.Name)
+	if name != "" {
+		return name
+	}
+	id := container.ID
+	if len(id) > 12 {
+		id = id[:12]
+	}
+	return id
 }
 
 func (b *PlanBuilder) sources(container docker.Container) []string {

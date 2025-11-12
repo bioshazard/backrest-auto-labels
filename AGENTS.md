@@ -11,6 +11,7 @@
 - Go 1.23 module that builds `backrest-sidecar`, a Docker-friendly helper that renders Backrest plans from labeled containers and writes `/etc/backrest/config.json`.
 - Default CLI flags assume Docker socket at `/var/run/docker.sock`, config at `/etc/backrest/config.json`, docker root `/var/lib/docker`, and now a default volume prefix of `/var/lib/docker/volumes` (override via `--volume-prefix` or `BACKREST_VOLUME_PREFIX`).
 - Plan IDs are prefixed with `backrest_sidecar_` by default; expose overrides via `--plan-id-prefix` / `BACKREST_PLAN_ID_PREFIX` if integrations depend on old names.
+- Use `backrest.hooks.template=simple-stop-start` when you want automatic `docker stop/start` hooks; custom hooks still win if provided.
 - Config writes use `fsutil.AtomicWrite`, preserve the existing UID/GID, and set permissions to `0644` so Backrest can read the file.
 - `.dockerignore` excludes `backrest.config.json` (+ `.new`) to prevent accidental `COPY` of host configs.
 

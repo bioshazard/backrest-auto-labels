@@ -105,7 +105,7 @@ Single JSON file with:
    * `schedule`: from label or default.
    * `sources`: from `backrest.paths.include` or derived from mounts; label paths that match a container mount/volume automatically rewrite to the host path (default `/var/lib/docker/volumes/...` unless `--volume-prefix` overrides).
    * `exclude`: from label.
-   * `hooks.pre/post`: from label(s) (CSV → array).
+   * `hooks.pre/post`: from label(s) (CSV → array) or the template label `backrest.hooks.template=simple-stop-start`, which auto-injects `docker stop <container>` before and `docker start <container>` after the plan when no explicit hooks are provided.
    * `retention.spec`: raw string from `backrest.keep` or the configured default (defaults to `daily=7,weekly=4`).
 3. **Merge** into existing config:
 
@@ -165,7 +165,7 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
    * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
    * `scripts/dry-run-binary.sh` – builds if needed and runs `./bin/backrest-sidecar reconcile --dry-run ...` (pass extra flags as args).
   * `scripts/dry-run-docker.sh` – mounts the entire config directory (`CONFIG_DIR`, default `testdata`) at `/etc/backrest`, sets `CONFIG_FILE` (default `example-sidecar.config.json`), and runs `docker compose run --build sidecar ...` with the usual dry-run flags. Override `CONFIG_DIR`, `CONFIG_FILE`, `COMPOSE_FILE`, or CLI args to suit your test.
-  * `compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys **and** a `demo-echo-lite` service that only sets `backrest.enable=true`, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f compose.dry-run.yaml up demo-echo demo-echo-lite sidecar` for an end-to-end playground, or rely on the helper script above.
+  * `compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys **and** a `demo-echo-lite` service that only sets `backrest.enable=true` plus `backrest.hooks.template=simple-stop-start`, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f compose.dry-run.yaml up demo-echo demo-echo-lite sidecar` for an end-to-end playground, or rely on the helper script above.
 
 Example output when the `db` service from the section below is already labeled:
 

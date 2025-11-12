@@ -155,6 +155,7 @@ const (
 	LabelPathsExclude      = "backrest.paths.exclude"
 	LabelHooksPre          = "backrest.pre"
 	LabelHooksPost         = "backrest.post"
+	LabelHooksTemplate     = "backrest.hooks.template"
 	LabelRetentionKeep     = "backrest.keep"
 	LabelRCBVolumes        = "restic-compose-backup.volumes"
 	LabelRCBVolumesInclude = "restic-compose-backup.volumes.include"

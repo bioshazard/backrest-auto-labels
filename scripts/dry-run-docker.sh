@@ -3,7 +3,7 @@ set -euo pipefail
 
 CONFIG_DIR=${CONFIG_DIR:-testdata}
 CONFIG_FILE=${CONFIG_FILE:-example-sidecar.config.json}
-COMPOSE_FILE=${COMPOSE_FILE:-compose.dry-run.yaml}
+COMPOSE_FILE=${COMPOSE_FILE:-testing/compose.dry-run.yaml}
 PROJECT_NAME=${PROJECT_NAME:-backrest-sidecar}
 HOST_CONFIG_DIR=$(realpath "$CONFIG_DIR")
 

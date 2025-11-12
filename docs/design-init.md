@@ -153,6 +153,32 @@ backrest-sidecar
     (all reconcile flags)
 ```
 
+## Reference docker compose
+
+The repo root ships with `compose.yaml`, a canonical two-service stack:
+
+```
+services:
+  backrest:
+    image: garethgeorge/backrest:latest
+    volumes:
+      - backrest-config:/config
+      - backrest-data:/data
+      ...
+  sidecar:
+    image: ghcr.io/bioshazard/backrest-auto-labels:latest
+    volumes:
+      - backrest-config:/etc/backrest   # shared config.json
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    command: ["daemon","--config","/etc/backrest/config.json","--with-events","--apply"]
+volumes:
+  backrest-config:
+  ...
+```
+
+Backrest and the sidecar mount the same named volume (`backrest-config`) so a single `config.json` is readable/writeable by both containers. The sidecar also mounts the Docker socket and `/var/lib/docker` read-only so it can discover labeled workloads and map named volumes to host paths. Adjust the sample to point at your real repo storage and restic credentials, or bind-mount an existing `/etc/backrest` directory if you already run Backrest on the host.
+
 ## Dry-run workflow (existing labels)
 
 Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing the Backrest config. Because the host already mounts `/var/run/docker.sock`, the sidecar can read every Compose project’s labels without extra setup.
@@ -165,7 +191,7 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
    * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
    * `scripts/dry-run-binary.sh` – builds if needed and runs `./bin/backrest-sidecar reconcile --dry-run ...` (pass extra flags as args).
   * `scripts/dry-run-docker.sh` – mounts the entire config directory (`CONFIG_DIR`, default `testdata`) at `/etc/backrest`, sets `CONFIG_FILE` (default `example-sidecar.config.json`), and runs `docker compose run --build sidecar ...` with the usual dry-run flags. Override `CONFIG_DIR`, `CONFIG_FILE`, `COMPOSE_FILE`, or CLI args to suit your test.
-  * `compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys **and** a `demo-echo-lite` service that only sets `backrest.enable=true` plus `backrest.hooks.template=simple-stop-start`, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f compose.dry-run.yaml up demo-echo demo-echo-lite sidecar` for an end-to-end playground, or rely on the helper script above.
+  * `testing/compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys **and** a `demo-echo-lite` service that only sets `backrest.enable=true` plus `backrest.hooks.template=simple-stop-start`, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f testing/compose.dry-run.yaml up demo-echo demo-echo-lite sidecar` for an end-to-end playground, or rely on the helper script above.
 
 Example output when the `db` service from the section below is already labeled:
 

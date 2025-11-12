@@ -56,6 +56,8 @@ services:
 
 When `backrest.paths.include` matches a container mount, the sidecar rewrites it to the host-side path (for example `/var/lib/docker/volumes/backrest-config/_data` by default), so you capture just the config while ignoring other mounts.
 
+Need cron jitter inside a window? Set the minute field to `T` (e.g. `backrest.schedule=T 3 * * *`). The sidecar hashes the rendered plan ID to a deterministic minute between `0-59`, so each workload keeps a consistent-but-spread start time without overlapping exactly on the hour.
+
 ### Manage the compose stack
 
 Use the provided Make target to run Docker Compose with a stable project name (`backrest-dev`):
@@ -72,7 +74,7 @@ Override `COMPOSE_FILE`/`COMPOSE_PROJECT` if you maintain alternate stacks.
 | --- | --- |
 | `backrest.enable=true` | opt-in a container |
 | `backrest.repo` | override repo id (defaults to first repo in config) |
-| `backrest.schedule` | cron schedule (default `0 2 * * *`) |
+| `backrest.schedule` | cron schedule (default `0 2 * * *`; set minute to `T` to hash-stabilize a random minute per plan) |
 | `backrest.paths.include` | comma-separated container paths |
 | `backrest.paths.exclude` | comma-separated paths to skip |
 | `backrest.keep` | retention spec (default `daily=7,weekly=4`) |

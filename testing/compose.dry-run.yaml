@@ -9,7 +9,7 @@ services:
     labels:
       backrest.enable: "true"
       backrest.repo: "sample-repo"
-      backrest.schedule: "15 4 * * *"
+      backrest.schedule: "T 3 * * *"
       backrest.paths.include: "/var/demo-config"
       backrest.keep: "daily=7,weekly=4"
       backrest.snapshot-start: "echo quiesce-start"
@@ -40,7 +40,7 @@ services:
       - --config
       - /etc/backrest/${CONFIG_FILE:-example-sidecar.config.json}
       - --with-events
-      - --apply
+      # - --apply
 
 volumes:
   demo-data:

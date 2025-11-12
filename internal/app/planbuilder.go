@@ -2,7 +2,9 @@ package app
 
 import (
 	"fmt"
+	"hash/fnv"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
@@ -40,14 +42,19 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 	if repo == "" {
 		return nil, fmt.Errorf("container %s missing repo label and default repo", container.Name)
 	}
-	schedule := model.GetLabel(container.Labels, model.LabelSchedule, b.opts.DefaultSchedule)
-	if schedule == "" {
-		return nil, fmt.Errorf("container %s missing schedule label and default", container.Name)
-	}
 
 	id := b.planID(container)
 	if id == "" {
 		return nil, fmt.Errorf("unable to derive plan id for container %s", container.Name)
+	}
+
+	schedule := model.GetLabel(container.Labels, model.LabelSchedule, b.opts.DefaultSchedule)
+	if schedule == "" {
+		return nil, fmt.Errorf("container %s missing schedule label and default", container.Name)
+	}
+	normalizedSchedule, err := b.normalizeSchedule(schedule, id)
+	if err != nil {
+		return nil, fmt.Errorf("container %s invalid schedule: %w", container.Name, err)
 	}
 
 	paths := b.paths(container)
@@ -72,7 +79,7 @@ func (b *PlanBuilder) Build(container docker.Container) (*model.Plan, error) {
 		Paths:        paths,
 		PathsExclude: pathsExclude,
 		Schedule: model.PlanSchedule{
-			Cron:  schedule,
+			Cron:  normalizedSchedule,
 			Clock: "CLOCK_LOCAL",
 		},
 		Retention: retention,
@@ -230,6 +237,34 @@ func (b *PlanBuilder) rewriteLabeledPaths(paths []string, mounts []dockertypes.M
 		out = append(out, rewritten)
 	}
 	return unique(out)
+}
+
+func (b *PlanBuilder) normalizeSchedule(schedule, planID string) (string, error) {
+	schedule = strings.TrimSpace(schedule)
+	if schedule == "" {
+		return "", fmt.Errorf("schedule is empty")
+	}
+	fields := strings.Fields(schedule)
+	if len(fields) == 0 {
+		return "", fmt.Errorf("schedule is empty")
+	}
+	if strings.EqualFold(fields[0], "T") {
+		if planID == "" {
+			return "", fmt.Errorf("plan id required for randomized schedules")
+		}
+		fields[0] = strconv.Itoa(randomMinuteForPlan(planID))
+		return strings.Join(fields, " "), nil
+	}
+	return schedule, nil
+}
+
+func randomMinuteForPlan(planID string) int {
+	if planID == "" {
+		planID = "default"
+	}
+	hasher := fnv.New32a()
+	_, _ = hasher.Write([]byte(planID))
+	return int(hasher.Sum32() % 60)
 }
 
 func (b *PlanBuilder) hostPathForLabel(path string, mounts []dockertypes.MountPoint) string {

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 
 	dockertypes "github.com/docker/docker/api/types"
@@ -66,11 +68,11 @@ func TestPlanBuilderHookTemplateDoesNotOverrideManualHooks(t *testing.T) {
 	ctr := docker.Container{
 		Name: "demo-echo",
 		Labels: map[string]string{
-			model.LabelRepo:          "sample-repo",
-			model.LabelSchedule:      "0 2 * * *",
-			model.LabelHooksTemplate: "simple-stop-start",
+			model.LabelRepo:              "sample-repo",
+			model.LabelSchedule:          "0 2 * * *",
+			model.LabelHooksTemplate:     "simple-stop-start",
 			model.LabelHookSnapshotStart: "echo noop",
-			model.LabelPathsInclude:  "/data",
+			model.LabelPathsInclude:      "/data",
 		},
 		Mounts: []dockertypes.MountPoint{{
 			Type:        mount.TypeVolume,
@@ -91,5 +93,82 @@ func TestPlanBuilderHookTemplateDoesNotOverrideManualHooks(t *testing.T) {
 	}
 	if hook.ActionCommand.Command != "echo noop" {
 		t.Fatalf("unexpected command: %s", hook.ActionCommand.Command)
+	}
+}
+
+func TestPlanBuilderScheduleRandomMinuteFromLabel(t *testing.T) {
+	b := NewPlanBuilder(PlanBuilderOptions{
+		DockerRoot:       "/var/lib/docker",
+		DefaultRepo:      "sample-repo",
+		DefaultSchedule:  "0 2 * * *",
+		DefaultRetention: "daily=7,weekly=4",
+		PlanIDPrefix:     "backrest_sidecar_",
+	})
+	ctr := docker.Container{
+		Name: "demo-schedule",
+		Labels: map[string]string{
+			model.LabelRepo:         "sample-repo",
+			model.LabelSchedule:     "T 3 * * *",
+			model.LabelPathsInclude: "/var/demo-data",
+		},
+		Mounts: []dockertypes.MountPoint{{
+			Type:        mount.TypeVolume,
+			Name:        "demo-data",
+			Destination: "/var/demo-data",
+		}},
+	}
+	plan, err := b.Build(ctr)
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	fields := strings.Fields(plan.Schedule.Cron)
+	if len(fields) == 0 {
+		t.Fatalf("schedule empty")
+	}
+	expectedMinute := strconv.Itoa(randomMinuteForPlan(plan.ID))
+	if fields[0] != expectedMinute {
+		t.Fatalf("minute mismatch: got %s want %s", fields[0], expectedMinute)
+	}
+	if fields[1] != "3" {
+		t.Fatalf("hour mutated: got %s want 3", fields[1])
+	}
+}
+
+func TestPlanBuilderScheduleRandomMinuteFromDefault(t *testing.T) {
+	b := NewPlanBuilder(PlanBuilderOptions{
+		DockerRoot:         "/var/lib/docker",
+		DefaultRepo:        "sample-repo",
+		DefaultSchedule:    "T 4 * * *",
+		DefaultRetention:   "daily=7,weekly=4",
+		PlanIDPrefix:       "backrest_sidecar_",
+		IncludeProjectName: true,
+	})
+	ctr := docker.Container{
+		Project: "demo",
+		Service: "api",
+		Labels: map[string]string{
+			model.LabelRepo:         "sample-repo",
+			model.LabelPathsInclude: "/data",
+		},
+		Mounts: []dockertypes.MountPoint{{
+			Type:        mount.TypeVolume,
+			Name:        "api-data",
+			Destination: "/data",
+		}},
+	}
+	plan, err := b.Build(ctr)
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+	fields := strings.Fields(plan.Schedule.Cron)
+	if len(fields) == 0 {
+		t.Fatalf("schedule empty")
+	}
+	expectedMinute := strconv.Itoa(randomMinuteForPlan(plan.ID))
+	if fields[0] != expectedMinute {
+		t.Fatalf("minute mismatch: got %s want %s", fields[0], expectedMinute)
+	}
+	if fields[1] != "4" {
+		t.Fatalf("hour mutated: got %s want 4", fields[1])
 	}
 }

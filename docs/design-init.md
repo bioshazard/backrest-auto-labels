@@ -33,7 +33,7 @@ Attach to *services you want backed up*:
 
 * `backrest.enable=true`
 * `backrest.repo=<repo-id>` (defaults to `default`)
-* `backrest.schedule=<cron>` (defaults `0 2 * * *`)
+* `backrest.schedule=<cron>` (defaults `0 2 * * *`; use `T` for the minute to hash-stabilize a random minute per plan)
 
 **Paths**
 

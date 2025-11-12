@@ -29,7 +29,7 @@ services:
       - --config
       - /etc/backrest/config.json
       - --with-events
-      - --apply
+      # - --apply
     depends_on:
       - backrest
 

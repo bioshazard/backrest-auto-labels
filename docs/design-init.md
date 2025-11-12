@@ -42,8 +42,8 @@ Attach to *services you want backed up*:
 
 **Quiesce hooks (Backrest executes)**
 
-* `backrest.pre=sh -c 'docker stop $SELF'` (CSV allowed; multiple commands)
-* `backrest.post=sh -c 'docker start $SELF'`
+* `backrest.snapshot-start=sh -c 'docker stop $SELF'` (CSV allowed; multiple commands)
+* `backrest.snapshot-end=sh -c 'docker start $SELF'`
 
 **Retention (for post-backup restic forget loop)**
 
@@ -51,13 +51,7 @@ Attach to *services you want backed up*:
 
 **Quiesce (sidecar-controlled stop/start around rcb if desired)**
 
-* `restic-compose-backup.quiesce=true`
-
-**rcb selection (what to snapshot)**
-
-* `restic-compose-backup.volumes=true`
-* (optional) `restic-compose-backup.volumes.include=media,files`
-* (optional) `restic-compose-backup.volumes.exclude=cache`
+* `backrest.quiesce=true`
 
 > Notes:
 >
@@ -151,7 +145,7 @@ backrest-sidecar
   backup-once
     --rcb-image zettaio/restic-compose-backup:0.7.1
     --rcb-env-file /etc/rcb.env    # RESTIC_* etc.
-    --quiesce-label restic-compose-backup.quiesce=true
+    --quiesce-label backrest.quiesce=true
   daemon
     --interval 60s
     --with-events             # listen to Docker events for faster reconcile
@@ -195,8 +189,8 @@ Use `--dry-run` (or `make dry-run`) to inspect the rendered plans before writing
 5. Helper scripts under `scripts/` wrap the common flows:
    * `scripts/dry-run-make.sh` – runs the Makefile target against the sample config (override `CONFIG`/`RUN_FLAGS` as env vars).
    * `scripts/dry-run-binary.sh` – builds if needed and runs `./bin/backrest-sidecar reconcile --dry-run ...` (pass extra flags as args).
-  * `scripts/dry-run-docker.sh` – mounts the entire config directory (`CONFIG_DIR`, default `testdata`) at `/etc/backrest`, sets `CONFIG_FILE` (default `example-sidecar.config.json`), and runs `docker compose run --build sidecar ...` with the usual dry-run flags. Override `CONFIG_DIR`, `CONFIG_FILE`, `COMPOSE_FILE`, or CLI args to suit your test.
-  * `testing/compose.dry-run.yaml` builds the Dockerfile, spins up a sample `demo-echo` container labeled with `backrest.*` keys **and** a `demo-echo-lite` service that only sets `backrest.enable=true` plus `backrest.hooks.template=simple-stop-start`, and wires the right volumes/env. Run `CONFIG_DIR=/abs/path/to/configs CONFIG_FILE=my-config.json docker compose -f testing/compose.dry-run.yaml up demo-echo demo-echo-lite sidecar` for an end-to-end playground, or rely on the helper script above.
+  * `scripts/dry-run-docker.sh` – mounts the entire config directory (`CONFIG_DIR`, default `testdata`) at `/etc/backrest`, sets `CONFIG_FILE` (default `example-sidecar.config.json`), and runs `docker compose -p backrest-dev -f compose.yaml run --build sidecar ...` with the usual dry-run flags. Override `CONFIG_DIR`, `CONFIG_FILE`, `COMPOSE_FILE`, or CLI args to suit your test.
+  * `compose.yaml` at the repo root shows a Backrest + sidecar stack you can bring up via `make compose COMPOSE_CMD="up -d"` for an end-to-end playground.
 
 Example output when the `db` service from the section below is already labeled:
 
@@ -272,7 +266,7 @@ Sidecar does this in `backup-once`. `--exclude-bind-mounts` maps to `EXCLUDE_BIN
 
 **Quiesce (sidecar-controlled)**
 
-* Gather running containers with `restic-compose-backup.quiesce=true`.
+* Gather running containers with `backrest.quiesce=true`.
 * `docker stop --time <timeout> ...`
 * `backup-once`
 * Always `docker start ...` in `defer`/`finally`.
@@ -447,10 +441,9 @@ services:
       backrest.schedule: "15 3 * * *"
       backrest.keep: "daily=7,weekly=4,monthly=6"
       backrest.paths.exclude: "/var/lib/postgresql/data/pg_wal"
-      restic-compose-backup.volumes: "true"
-      restic-compose-backup.quiesce: "true"
-      backrest.pre: "sh -c 'docker stop $SELF'"
-      backrest.post: "sh -c 'docker start $SELF'"
+      backrest.quiesce: "true"
+      backrest.snapshot-start: "sh -c 'docker stop $SELF'"
+      backrest.snapshot-end: "sh -c 'docker start $SELF'"
     volumes:
       - pgdata:/var/lib/postgresql/data
 volumes: { pgdata: {} }

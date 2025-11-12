@@ -48,10 +48,11 @@ type HookCommand struct {
 
 // Repo represents a Backrest repo entry.
 type Repo struct {
-	ID   string            `json:"id"`
-	Type string            `json:"type"`
-	URL  string            `json:"url"`
-	Env  map[string]string `json:"env,omitempty"`
+	ID   string   `json:"id"`
+	Type string   `json:"type,omitempty"`
+	URL  string   `json:"url,omitempty"`
+	URI  string   `json:"uri,omitempty"`
+	Env  []string `json:"env,omitempty"`
 }
 
 // Config is the Backrest config file model.
@@ -201,15 +202,11 @@ const (
 	LabelSchedule          = "backrest.schedule"
 	LabelPathsInclude      = "backrest.paths.include"
 	LabelPathsExclude      = "backrest.paths.exclude"
-	LabelHooksPre          = "backrest.pre"
-	LabelHooksPost         = "backrest.post"
+	LabelHookSnapshotStart = "backrest.snapshot-start"
+	LabelHookSnapshotEnd   = "backrest.snapshot-end"
 	LabelHooksTemplate     = "backrest.hooks.template"
 	LabelRetentionKeep     = "backrest.keep"
-	LabelRCBVolumes        = "restic-compose-backup.volumes"
-	LabelRCBVolumesInclude = "restic-compose-backup.volumes.include"
-	LabelRCBVolumesExclude = "restic-compose-backup.volumes.exclude"
-	LabelRCBQuiesce        = "restic-compose-backup.quiesce"
-	LabelSidecarQuiesce    = "restic-compose-backup.quiesce"
+	LabelQuiesce           = "backrest.quiesce"
 	LabelComposeProject    = "com.docker.compose.project"
 	LabelComposeService    = "com.docker.compose.service"
 )

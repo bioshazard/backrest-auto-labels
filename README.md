@@ -22,7 +22,7 @@ make build   # outputs ./bin/backrest-sidecar
 CONFIG_DIR=testdata CONFIG_FILE=example-sidecar.config.json \
   scripts/dry-run-docker.sh --log-format text --log-level debug
 ```
-This uses `testing/compose.dry-run.yaml` to spin up demo containers and prints the plans the sidecar would write.
+This uses `testing/compose.dry-run.yaml` (demo echo workloads + bundled sidecar) and runs the sidecar container with your config bind-mounted, so you see exactly what would be written.
 
 ### Canonical Compose deployment
 The repo root includes `compose.yaml` with a Backrest + sidecar stack that shares the same `backrest-config` volume:
@@ -44,6 +44,17 @@ volumes:
 ```
 Customize the tags, env vars, and mounts to match your environment, but always share the config volume between Backrest and the sidecar.
 
+### Manage the compose stack
+
+Use the provided Make target to run Docker Compose with a stable project name (`backrest-dev`):
+
+```bash
+make compose COMPOSE_CMD="up -d"     # start stack
+make compose COMPOSE_CMD="down --volumes"  # tear down
+```
+
+Override `COMPOSE_FILE`/`COMPOSE_PROJECT` if you maintain alternate stacks.
+
 ### Labels you care about
 | Label | Purpose |
 | --- | --- |
@@ -53,8 +64,9 @@ Customize the tags, env vars, and mounts to match your environment, but always s
 | `backrest.paths.include` | comma-separated container paths |
 | `backrest.paths.exclude` | comma-separated paths to skip |
 | `backrest.keep` | retention spec (default `daily=7,weekly=4`) |
-| `backrest.pre` / `backrest.post` | CSV commands → snapshot start/end hooks |
+| `backrest.snapshot-start` / `backrest.snapshot-end` | CSV commands → snapshot start/end hooks |
 | `backrest.hooks.template` | `simple-stop-start` autogenerates `docker stop/start <container>` hooks |
+| `backrest.quiesce` | mark containers the sidecar should stop/start around `backup-once` |
 
 See `docs/design-init.md` for the full matrix.
 

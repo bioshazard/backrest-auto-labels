@@ -279,7 +279,7 @@ func newBackupCLIOptions() backupCLIOptions {
 	return backupCLIOptions{
 		rcbImage:         "zettaio/restic-compose-backup:0.7.1",
 		rcbCommand:       []string{"rcb", "backup"},
-		quiesceLabel:     "restic-compose-backup.quiesce=true",
+		quiesceLabel:     "backrest.quiesce=true",
 		quiesceTimeout:   60 * time.Second,
 		resticGroupBy:    "paths",
 		resticPathPrefix: "/volumes",
@@ -291,7 +291,7 @@ func bindBackupFlags(cmd *cobra.Command, opts *backupCLIOptions) {
 	cmd.Flags().StringVar(&opts.rcbEnvFile, "rcb-env-file", opts.rcbEnvFile, "env file passed to rcb container")
 	cmd.Flags().StringSliceVar(&opts.rcbCommand, "rcb-command", opts.rcbCommand, "rcb command + args (default: rcb backup)")
 	cmd.Flags().StringSliceVar(&opts.rcbArgs, "rcb-arg", opts.rcbArgs, "additional args appended to rcb command")
-	cmd.Flags().StringVar(&opts.quiesceLabel, "quiesce-label", opts.quiesceLabel, "label selector for sidecar-controlled quiesce")
+	cmd.Flags().StringVar(&opts.quiesceLabel, "quiesce-label", opts.quiesceLabel, "label selector for sidecar-controlled quiesce (e.g. backrest.quiesce=true)")
 	cmd.Flags().DurationVar(&opts.quiesceTimeout, "quiesce-timeout", opts.quiesceTimeout, "quiesce stop timeout")
 	cmd.Flags().StringVar(&opts.resticGroupBy, "restic-group-by", opts.resticGroupBy, "restic --group-by value for retention")
 	cmd.Flags().StringVar(&opts.resticPathPrefix, "restic-path-prefix", opts.resticPathPrefix, "base path prefix used in restic forget")

@@ -1,38 +1,40 @@
 {
+  "modno": 1,
+  "version": 4,
+  "instance": "demo-backrest",
   "repos": [
     {
       "id": "sample-repo",
-      "type": "s3",
-      "url": "s3://example-bucket/backups",
-      "env": {
-        "AWS_ACCESS_KEY_ID": "EXAMPLEKEY",
-        "AWS_SECRET_ACCESS_KEY": "EXAMPLESECRET"
+      "uri": "s3://example-bucket/backups",
+      "env": [
+        "AWS_ACCESS_KEY_ID=EXAMPLEKEY",
+        "AWS_SECRET_ACCESS_KEY=EXAMPLESECRET"
+      ],
+      "prunePolicy": {
+        "schedule": {
+          "cron": "0 0 * * *",
+          "clock": "CLOCK_LAST_RUN_TIME"
+        },
+        "maxUnusedPercent": 10
+      },
+      "checkPolicy": {
+        "schedule": {
+          "cron": "0 0 1 * *",
+          "clock": "CLOCK_LAST_RUN_TIME"
+        },
+        "readDataSubsetPercent": 0
       }
     }
   ],
   "plans": [
-    {
-      "id": "sample_service",
-      "repo": "sample-repo",
-      "schedule": "0 2 * * *",
-      "sources": [
-        "/docker_volumes/sample_stack_appdata",
-        "/docker_volumes/sample_stack_appmedia"
-      ],
-      "exclude": [
-        "/docker_volumes/sample_stack_appdata/tmp"
-      ],
-      "hooks": {
-        "pre": [
-          "docker stop sample-app"
-        ],
-        "post": [
-          "docker start sample-app"
-        ]
-      },
-      "retention": {
-        "spec": "daily=7,weekly=4"
+    
+  ],
+  "auth": {
+    "users": [
+      {
+        "name": "demo",
+        "passwordBcrypt": "$2a$10$exampleexampleexampleexampleexampleexampleexampleexample"
       }
-    }
-  ]
+    ]
+  }
 }

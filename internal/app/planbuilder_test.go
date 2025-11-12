@@ -69,7 +69,7 @@ func TestPlanBuilderHookTemplateDoesNotOverrideManualHooks(t *testing.T) {
 			model.LabelRepo:          "sample-repo",
 			model.LabelSchedule:      "0 2 * * *",
 			model.LabelHooksTemplate: "simple-stop-start",
-			model.LabelHooksPre:      "echo noop",
+			model.LabelHookSnapshotStart: "echo noop",
 			model.LabelPathsInclude:  "/data",
 		},
 		Mounts: []dockertypes.MountPoint{{

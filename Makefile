@@ -31,10 +31,13 @@ CONFIG ?= ./backrest.config.json
 RUN_FLAGS ?=
 DOCKER_BUILD_ARGS ?=
 DOCKER_ARGS ?= daemon --config /etc/backrest/config.json --with-events --apply
+COMPOSE_FILE ?= testing/compose.dry-run.yaml
+COMPOSE_PROJECT ?= backrest-sidecar
+COMPOSE_CMD ?= ps
 
 BIN := $(BIN_DIR)/$(BINARY)
 
-.PHONY: build run dry-run docker-build docker-run docker-push fmt test clean
+.PHONY: build run dry-run docker-build docker-run docker-push fmt test clean compose
 
 build:
 	@mkdir -p $(BIN_DIR)
@@ -65,6 +68,9 @@ fmt:
 
 test:
 	$(GO_CMD) test ./...
+
+compose:
+	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT) docker compose -p $(COMPOSE_PROJECT) -f $(COMPOSE_FILE) $(COMPOSE_CMD)
 
 clean:
 	rm -rf $(BIN_DIR)

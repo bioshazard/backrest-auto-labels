@@ -117,16 +117,16 @@ func (b *PlanBuilder) basePlanID(container docker.Container) string {
 }
 
 func (b *PlanBuilder) buildHooks(container docker.Container) []model.PlanHook {
-	pre := model.ParseCSV(container.Labels[model.LabelHooksPre])
-	post := model.ParseCSV(container.Labels[model.LabelHooksPost])
-	hooks := make([]model.PlanHook, 0, len(pre)+len(post)+2)
-	for _, cmd := range pre {
+	startCmds := model.ParseCSV(container.Labels[model.LabelHookSnapshotStart])
+	endCmds := model.ParseCSV(container.Labels[model.LabelHookSnapshotEnd])
+	hooks := make([]model.PlanHook, 0, len(startCmds)+len(endCmds)+2)
+	for _, cmd := range startCmds {
 		hooks = append(hooks, model.PlanHook{
 			Conditions:    []string{"CONDITION_SNAPSHOT_START"},
 			ActionCommand: model.HookCommand{Command: cmd},
 		})
 	}
-	for _, cmd := range post {
+	for _, cmd := range endCmds {
 		hooks = append(hooks, model.PlanHook{
 			Conditions:    []string{"CONDITION_SNAPSHOT_END"},
 			ActionCommand: model.HookCommand{Command: cmd},

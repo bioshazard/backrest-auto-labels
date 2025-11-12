@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/mount"
 
 	"github.com/zettaio/backrest-sidecar/internal/docker"
@@ -93,7 +94,7 @@ func (b *PlanBuilder) planID(container docker.Container) string {
 
 func (b *PlanBuilder) sources(container docker.Container) []string {
 	if labels := model.ParseCSV(container.Labels[model.LabelPathsInclude]); len(labels) > 0 {
-		return labels
+		return b.rewriteLabeledPaths(labels, container.Mounts)
 	}
 	if len(container.Mounts) == 0 {
 		return nil
@@ -128,6 +129,78 @@ func (b *PlanBuilder) rewriteVolumePath(path string) string {
 		return path
 	}
 	return filepath.Join(b.opts.VolumePrefix, rel)
+}
+
+func (b *PlanBuilder) rewriteLabeledPaths(paths []string, mounts []dockertypes.MountPoint) []string {
+	if len(paths) == 0 {
+		return paths
+	}
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		rewritten := b.hostPathForLabel(p, mounts)
+		if rewritten == "" {
+			if p != "" {
+				out = append(out, p)
+			}
+			continue
+		}
+		out = append(out, rewritten)
+	}
+	return unique(out)
+}
+
+func (b *PlanBuilder) hostPathForLabel(path string, mounts []dockertypes.MountPoint) string {
+	cleanLabel := filepath.Clean(path)
+	for _, m := range mounts {
+		target := filepath.Clean(m.Destination)
+		if target == "." || target == "" {
+			continue
+		}
+		rel, ok := relWithin(cleanLabel, target)
+		if !ok {
+			continue
+		}
+		switch m.Type {
+		case mount.TypeVolume:
+			if m.Name == "" {
+				continue
+			}
+			hostPath := filepath.Join(b.opts.DockerRoot, "volumes", m.Name, "_data")
+			if rel != "" {
+				hostPath = filepath.Join(hostPath, rel)
+			}
+			return b.rewriteVolumePath(hostPath)
+		case mount.TypeBind:
+			if m.Source == "" {
+				continue
+			}
+			hostPath := m.Source
+			if rel != "" {
+				hostPath = filepath.Join(hostPath, rel)
+			}
+			return hostPath
+		}
+	}
+	return ""
+}
+
+func relWithin(path, base string) (string, bool) {
+	if path == "" || base == "" {
+		return "", false
+	}
+	path = filepath.Clean(path)
+	base = filepath.Clean(base)
+	if path == base {
+		return "", true
+	}
+	prefix := base
+	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
+		prefix += string(filepath.Separator)
+	}
+	if strings.HasPrefix(path, prefix) {
+		return strings.TrimPrefix(path, prefix), true
+	}
+	return "", false
 }
 
 func unique(items []string) []string {

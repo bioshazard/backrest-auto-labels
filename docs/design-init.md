@@ -103,7 +103,7 @@ Single JSON file with:
    * `id`: `${project}_${service}` if labels exist, else container name.
    * `repo`: from `backrest.repo` or default.
    * `schedule`: from label or default.
-   * `sources`: from `backrest.paths.include` or derived from mounts.
+   * `sources`: from `backrest.paths.include` or derived from mounts; label paths that match a container mount/volume automatically rewrite to the host path (default `/var/lib/docker/volumes/...` unless `--volume-prefix` overrides).
    * `exclude`: from label.
    * `hooks.pre/post`: from label(s) (CSV → array).
    * `retention.spec`: raw string from `backrest.keep` (optional).
@@ -180,7 +180,7 @@ The command exits with code `2` (no write performed) but prints exactly how the 
 
 * `DOCKER_HOST` (socket override), `DOCKER_API_VERSION`
 * `BACKREST_CONFIG` (path to config.json; overrides `--config`)
-* `BACKREST_VOLUME_PREFIX` (defaults to `/var/lib/docker/volumes`, override when you bind that tree somewhere else such as `/docker_volumes`)
+* `BACKREST_VOLUME_PREFIX` (defaults to `/var/lib/docker/volumes`, override when you bind that tree somewhere else such as `/docker_volumes`; labeled paths that refer to container mountpoints rewrite through this prefix)
 * `RESTIC_*` in `--rcb-env-file` for backup-once mode
 
 ## rcb one-shot (Option B)

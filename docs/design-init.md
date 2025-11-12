@@ -115,6 +115,7 @@ Single JSON file with:
 4. **Atomic write**:
 
    * Write `config.json.new` → `fsync` → `rename` to `config.json`.
+   * Preserve the existing UID/GID and emit `config.json` with `0644` so the Backrest container and operators can read it without extra chmods.
 5. **Apply**:
 
    * If changed and `--apply`, `docker restart <backrest-container-name>`.
@@ -134,6 +135,7 @@ backrest-sidecar
     --backrest-container backrest
     --docker-sock /var/run/docker.sock
     --docker-root /var/lib/docker
+    --volume-prefix /var/lib/docker/volumes   # override (e.g. /docker_volumes) if you bind-mount elsewhere
     --default-repo default
     --default-schedule "0 2 * * *"
     --exclude-bind-mounts    # ignore bind mounts, volumes only
@@ -178,6 +180,7 @@ The command exits with code `2` (no write performed) but prints exactly how the 
 
 * `DOCKER_HOST` (socket override), `DOCKER_API_VERSION`
 * `BACKREST_CONFIG` (path to config.json; overrides `--config`)
+* `BACKREST_VOLUME_PREFIX` (defaults to `/var/lib/docker/volumes`, override when you bind that tree somewhere else such as `/docker_volumes`)
 * `RESTIC_*` in `--rcb-env-file` for backup-once mode
 
 ## rcb one-shot (Option B)

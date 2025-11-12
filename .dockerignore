@@ -3,3 +3,5 @@ scripts
 bin
 Dockerfile
 .dockerignore
+backrest.config.json
+backrest.config.json.new

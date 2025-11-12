@@ -41,6 +41,7 @@ type commonFlags struct {
 	dryRun             bool
 	dockerSocket       string
 	dockerRoot         string
+	volumePrefix       string
 	defaultRepo        string
 	defaultSchedule    string
 	includeProjectName bool
@@ -55,6 +56,7 @@ func newRootCmd() *cobra.Command {
 		configPath:        envOr("BACKREST_CONFIG", "./backrest.config.json"),
 		dockerSocket:      envOr("DOCKER_HOST", "/var/run/docker.sock"),
 		dockerRoot:        "/var/lib/docker",
+		volumePrefix:      envOr("BACKREST_VOLUME_PREFIX", "/var/lib/docker/volumes"),
 		defaultRepo:       "default",
 		defaultSchedule:   "0 2 * * *",
 		backrestContainer: "backrest",
@@ -120,6 +122,7 @@ func bindReconcileFlags(cmd *cobra.Command, flags *commonFlags) {
 	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", flags.dryRun, "render plans but skip config write")
 	cmd.Flags().StringVar(&flags.dockerSocket, "docker-sock", flags.dockerSocket, "docker socket path or host (e.g. /var/run/docker.sock)")
 	cmd.Flags().StringVar(&flags.dockerRoot, "docker-root", flags.dockerRoot, "host docker root for named volumes")
+	cmd.Flags().StringVar(&flags.volumePrefix, "volume-prefix", flags.volumePrefix, "rewrite derived volume sources to this prefix (e.g. /docker_volumes)")
 	cmd.Flags().StringVar(&flags.defaultRepo, "default-repo", flags.defaultRepo, "fallback Backrest repo id")
 	cmd.Flags().StringVar(&flags.defaultSchedule, "default-schedule", flags.defaultSchedule, "fallback cron schedule")
 	cmd.Flags().BoolVar(&flags.excludeBindMounts, "exclude-bind-mounts", flags.excludeBindMounts, "derive sources only from named volumes")
@@ -141,6 +144,7 @@ func runReconcile(cmd *cobra.Command, flags commonFlags) error {
 		DryRun:             flags.dryRun,
 		DockerSocket:       flags.dockerSocket,
 		DockerRoot:         flags.dockerRoot,
+		VolumePrefix:       flags.volumePrefix,
 		DefaultRepo:        flags.defaultRepo,
 		DefaultSchedule:    flags.defaultSchedule,
 		IncludeProjectName: flags.includeProjectName,
@@ -183,6 +187,7 @@ func runDaemon(cmd *cobra.Command, flags commonFlags, interval time.Duration, wi
 			DryRun:             flags.dryRun,
 			DockerSocket:       flags.dockerSocket,
 			DockerRoot:         flags.dockerRoot,
+			VolumePrefix:       flags.volumePrefix,
 			DefaultRepo:        flags.defaultRepo,
 			DefaultSchedule:    flags.defaultSchedule,
 			IncludeProjectName: flags.includeProjectName,

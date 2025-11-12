@@ -37,7 +37,7 @@ func Write(path string, cfg *model.Config) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshal config: %w", err)
 	}
-	if err := fsutil.AtomicWrite(path, append(data, '\n'), 0o600); err != nil {
+	if err := fsutil.AtomicWrite(path, append(data, '\n'), 0o644); err != nil {
 		return nil, err
 	}
 	return data, nil

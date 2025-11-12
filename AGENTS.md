@@ -1,0 +1,19 @@
+## Usage (Immutable)
+
+- This file is used to provide instruction to the agent
+- The code gen agent must update this file to capture DX preferences and codebase description
+- Put your long term memory stuff about the project and how we like to operate below here as you see fit!
+
+## Amendments (Mutable)
+
+### Codebase Snapshot
+- Go 1.23 module that builds `backrest-sidecar`, a Docker-friendly helper that renders Backrest plans from labeled containers and writes `/etc/backrest/config.json`.
+- Default CLI flags assume Docker socket at `/var/run/docker.sock`, config at `/etc/backrest/config.json`, docker root `/var/lib/docker`, and now a default volume prefix of `/var/lib/docker/volumes` (override via `--volume-prefix` or `BACKREST_VOLUME_PREFIX`).
+- Config writes use `fsutil.AtomicWrite`, preserve the existing UID/GID, and set permissions to `0644` so Backrest can read the file.
+- `.dockerignore` excludes `backrest.config.json` (+ `.new`) to prevent accidental `COPY` of host configs.
+
+### DX Preferences & Process
+- When the task touches Backrest behavior, ground answers in official Backrest docs; fetch via Context7 (`/garethgeorge/backrest`) before summarizing.
+- Watch for file permission regressions: config JSON must remain `0644` and retain ownership.
+- Be explicit about docker volume prefixes and mounting assumptions so operators know how to override them.
+- Local host lacks Go; run formatting/tests via `make fmt`, `make test`, etc., which automatically wrap `go` inside `golang:<GO_VERSION>` using Docker (see Makefile).

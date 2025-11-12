@@ -14,6 +14,7 @@ import (
 // PlanBuilderOptions configures plan synthesis.
 type PlanBuilderOptions struct {
 	DockerRoot         string
+	VolumePrefix       string
 	DefaultRepo        string
 	DefaultSchedule    string
 	IncludeProjectName bool
@@ -109,11 +110,24 @@ func (b *PlanBuilder) sources(container docker.Container) []string {
 			}
 		case mount.TypeVolume:
 			if m.Name != "" {
-				paths = append(paths, filepath.Join(b.opts.DockerRoot, "volumes", m.Name, "_data"))
+				hostPath := filepath.Join(b.opts.DockerRoot, "volumes", m.Name, "_data")
+				paths = append(paths, b.rewriteVolumePath(hostPath))
 			}
 		}
 	}
 	return unique(paths)
+}
+
+func (b *PlanBuilder) rewriteVolumePath(path string) string {
+	if b.opts.VolumePrefix == "" {
+		return path
+	}
+	base := filepath.Join(b.opts.DockerRoot, "volumes")
+	rel, err := filepath.Rel(base, path)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return path
+	}
+	return filepath.Join(b.opts.VolumePrefix, rel)
 }
 
 func unique(items []string) []string {

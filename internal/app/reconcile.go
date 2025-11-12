@@ -24,6 +24,7 @@ type ReconcileOptions struct {
 	DryRun             bool
 	DockerSocket       string
 	DockerRoot         string
+	VolumePrefix       string
 	DefaultRepo        string
 	DefaultSchedule    string
 	IncludeProjectName bool
@@ -58,6 +59,7 @@ func NewReconciler(opts ReconcileOptions) (*Reconciler, error) {
 	}
 	builder := NewPlanBuilder(PlanBuilderOptions{
 		DockerRoot:         opts.DockerRoot,
+		VolumePrefix:       opts.VolumePrefix,
 		DefaultRepo:        opts.DefaultRepo,
 		DefaultSchedule:    opts.DefaultSchedule,
 		IncludeProjectName: opts.IncludeProjectName,

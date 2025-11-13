@@ -57,9 +57,10 @@ type Repo struct {
 
 // Config is the Backrest config file model.
 type Config struct {
-	Repos  []Repo `json:"repos"`
-	Plans  []Plan `json:"plans"`
-	extras map[string]json.RawMessage
+	Repos    []Repo `json:"repos"`
+	Plans    []Plan `json:"plans"`
+	extras   map[string]json.RawMessage
+	rawRepos json.RawMessage
 }
 
 // EnsureNonNil ensures slices/maps are initialized.
@@ -84,6 +85,28 @@ func (c *Config) Extras() map[string]json.RawMessage {
 // SetExtras replaces the raw extras map.
 func (c *Config) SetExtras(raw map[string]json.RawMessage) {
 	c.extras = raw
+}
+
+// RawRepos returns the raw repos JSON if it was present when loading the config.
+func (c *Config) RawRepos() json.RawMessage {
+	if len(c.rawRepos) == 0 {
+		return nil
+	}
+	return append([]byte(nil), c.rawRepos...)
+}
+
+// SetRawRepos stores the raw repos JSON so it can be re-emitted without losing extra fields.
+func (c *Config) SetRawRepos(raw json.RawMessage) {
+	if len(raw) == 0 {
+		c.rawRepos = nil
+		return
+	}
+	c.rawRepos = append([]byte(nil), raw...)
+}
+
+// ClearRawRepos discards the stored raw repos payload so the next write re-marshals the struct.
+func (c *Config) ClearRawRepos() {
+	c.rawRepos = nil
 }
 
 // RepoExists returns true if repo ID exists.

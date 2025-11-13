@@ -89,7 +89,7 @@ Single JSON file with:
 }
 ```
 
-* **Repos** are **pre-provisioned** (UI or initial config). Sidecar never edits repos.
+* **Repos** are **pre-provisioned** (UI or initial config). Sidecar never edits repos and re-emits the repo JSON verbatim (fields like `guid`/`auto_initialize` stay intact).
 * **Plans** are upserted by **id**.
 
 ## Binary responsibilities

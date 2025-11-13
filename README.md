@@ -85,6 +85,8 @@ CONFIG=/etc/backrest/config.json ./bin/backrest-sidecar \
 
 Keep the repo ID in sync with whatever `repos[].id` entry Backrest already knows about; `backrest.repo=<id>` labels still win on containers that need a different target repo.
 
+> Note: the sidecar never rewrites `repos[]`; it simply carries forward whatever repo JSON Backrest already owns (including fields like `guid`/`auto_initialize`). Make sure Backrest itself initializes the repos before letting the sidecar render plans that point at them.
+
 ### Manage the compose stack
 
 Use the provided Make target to run Docker Compose with a stable project name (`backrest-dev`):

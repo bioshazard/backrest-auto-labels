@@ -28,6 +28,7 @@ func Load(path string) (*model.Config, []byte, error) {
 	}
 	cfg := &model.Config{}
 	if v, ok := raw["repos"]; ok {
+		cfg.SetRawRepos(v)
 		if err := json.Unmarshal(v, &cfg.Repos); err != nil {
 			return nil, nil, fmt.Errorf("parse repos: %w", err)
 		}
@@ -51,15 +52,19 @@ func Write(path string, cfg *model.Config) ([]byte, error) {
 	for k, v := range cfg.Extras() {
 		out[k] = v
 	}
-	reposBytes, err := json.Marshal(cfg.Repos)
-	if err != nil {
-		return nil, fmt.Errorf("marshal repos: %w", err)
-	}
 	plansBytes, err := json.Marshal(cfg.Plans)
 	if err != nil {
 		return nil, fmt.Errorf("marshal plans: %w", err)
 	}
-	out["repos"] = reposBytes
+	if rawRepos := cfg.RawRepos(); len(rawRepos) > 0 {
+		out["repos"] = rawRepos
+	} else {
+		reposBytes, err := json.Marshal(cfg.Repos)
+		if err != nil {
+			return nil, fmt.Errorf("marshal repos: %w", err)
+		}
+		out["repos"] = reposBytes
+	}
 	out["plans"] = plansBytes
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

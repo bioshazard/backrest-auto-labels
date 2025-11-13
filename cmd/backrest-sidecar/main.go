@@ -35,38 +35,45 @@ func main() {
 }
 
 type commonFlags struct {
-	configPath         string
-	apply              bool
-	backrestContainer  string
-	dryRun             bool
-	dockerSocket       string
-	dockerRoot         string
-	volumePrefix       string
-	defaultRepo        string
-	defaultSchedule    string
-	defaultRetention   string
-	planIDPrefix       string
-	includeProjectName bool
-	excludeBindMounts  bool
-	restartTimeout     time.Duration
-	logFormat          string
-	logLevel           string
+	configPath          string
+	apply               bool
+	backrestContainer   string
+	dryRun              bool
+	dockerSocket        string
+	dockerRoot          string
+	volumePrefix        string
+	defaultRepo         string
+	defaultRepoProvided bool
+	defaultSchedule     string
+	defaultRetention    string
+	planIDPrefix        string
+	includeProjectName  bool
+	excludeBindMounts   bool
+	restartTimeout      time.Duration
+	logFormat           string
+	logLevel            string
 }
 
 func newRootCmd() *cobra.Command {
+	defaultRepoValue, defaultRepoProvided := envValue("BACKREST_DEFAULT_REPO")
+	if defaultRepoValue == "" {
+		defaultRepoValue = "default"
+	}
+
 	flags := commonFlags{
-		configPath:        envOr("BACKREST_CONFIG", "./backrest.config.json"),
-		dockerSocket:      envOr("DOCKER_HOST", "/var/run/docker.sock"),
-		dockerRoot:        "/var/lib/docker",
-		volumePrefix:      envOr("BACKREST_VOLUME_PREFIX", "/var/lib/docker/volumes"),
-		defaultRepo:       "default",
-		defaultRetention:  envOr("BACKREST_DEFAULT_RETENTION", "daily=7,weekly=4"),
-		defaultSchedule:   "0 2 * * *",
-		planIDPrefix:      envOr("BACKREST_PLAN_ID_PREFIX", "backrest_sidecar_"),
-		backrestContainer: "backrest",
-		restartTimeout:    15 * time.Second,
-		logFormat:         "json",
-		logLevel:          "info",
+		configPath:          envOr("BACKREST_CONFIG", "./backrest.config.json"),
+		dockerSocket:        envOr("DOCKER_HOST", "/var/run/docker.sock"),
+		dockerRoot:          "/var/lib/docker",
+		volumePrefix:        envOr("BACKREST_VOLUME_PREFIX", "/var/lib/docker/volumes"),
+		defaultRepo:         defaultRepoValue,
+		defaultRepoProvided: defaultRepoProvided,
+		defaultRetention:    envOr("BACKREST_DEFAULT_RETENTION", "daily=7,weekly=4"),
+		defaultSchedule:     "0 2 * * *",
+		planIDPrefix:        envOr("BACKREST_PLAN_ID_PREFIX", "backrest_sidecar_"),
+		backrestContainer:   "backrest",
+		restartTimeout:      15 * time.Second,
+		logFormat:           "json",
+		logLevel:            "info",
 	}
 
 	rootCmd := &cobra.Command{
@@ -142,23 +149,28 @@ func runReconcile(cmd *cobra.Command, flags commonFlags) error {
 		exitCode = 1
 		return err
 	}
+	defaultRepoProvided := flags.defaultRepoProvided
+	if cmd.Flags().Changed("default-repo") {
+		defaultRepoProvided = true
+	}
 
 	opts := app.ReconcileOptions{
-		ConfigPath:         flags.configPath,
-		Apply:              flags.apply,
-		BackrestContainer:  flags.backrestContainer,
-		DryRun:             flags.dryRun,
-		DockerSocket:       flags.dockerSocket,
-		DockerRoot:         flags.dockerRoot,
-		VolumePrefix:       flags.volumePrefix,
-		DefaultRepo:        flags.defaultRepo,
-		DefaultSchedule:    flags.defaultSchedule,
-		DefaultRetention:   flags.defaultRetention,
-		PlanIDPrefix:       flags.planIDPrefix,
-		IncludeProjectName: flags.includeProjectName,
-		ExcludeBindMounts:  flags.excludeBindMounts,
-		Logger:             logger,
-		RestartTimeout:     flags.restartTimeout,
+		ConfigPath:          flags.configPath,
+		Apply:               flags.apply,
+		BackrestContainer:   flags.backrestContainer,
+		DryRun:              flags.dryRun,
+		DockerSocket:        flags.dockerSocket,
+		DockerRoot:          flags.dockerRoot,
+		VolumePrefix:        flags.volumePrefix,
+		DefaultRepo:         flags.defaultRepo,
+		DefaultRepoProvided: defaultRepoProvided,
+		DefaultSchedule:     flags.defaultSchedule,
+		DefaultRetention:    flags.defaultRetention,
+		PlanIDPrefix:        flags.planIDPrefix,
+		IncludeProjectName:  flags.includeProjectName,
+		ExcludeBindMounts:   flags.excludeBindMounts,
+		Logger:              logger,
+		RestartTimeout:      flags.restartTimeout,
 	}
 
 	reconciler, err := app.NewReconciler(opts)
@@ -187,23 +199,28 @@ func runDaemon(cmd *cobra.Command, flags commonFlags, interval time.Duration, wi
 		exitCode = 1
 		return err
 	}
+	defaultRepoProvided := flags.defaultRepoProvided
+	if cmd.Flags().Changed("default-repo") {
+		defaultRepoProvided = true
+	}
 	opts := app.DaemonOptions{
 		ReconcileOptions: app.ReconcileOptions{
-			ConfigPath:         flags.configPath,
-			Apply:              flags.apply,
-			BackrestContainer:  flags.backrestContainer,
-			DryRun:             flags.dryRun,
-			DockerSocket:       flags.dockerSocket,
-			DockerRoot:         flags.dockerRoot,
-			VolumePrefix:       flags.volumePrefix,
-			DefaultRepo:        flags.defaultRepo,
-			DefaultSchedule:    flags.defaultSchedule,
-			DefaultRetention:   flags.defaultRetention,
-			PlanIDPrefix:       flags.planIDPrefix,
-			IncludeProjectName: flags.includeProjectName,
-			ExcludeBindMounts:  flags.excludeBindMounts,
-			Logger:             logger,
-			RestartTimeout:     flags.restartTimeout,
+			ConfigPath:          flags.configPath,
+			Apply:               flags.apply,
+			BackrestContainer:   flags.backrestContainer,
+			DryRun:              flags.dryRun,
+			DockerSocket:        flags.dockerSocket,
+			DockerRoot:          flags.dockerRoot,
+			VolumePrefix:        flags.volumePrefix,
+			DefaultRepo:         flags.defaultRepo,
+			DefaultRepoProvided: defaultRepoProvided,
+			DefaultSchedule:     flags.defaultSchedule,
+			DefaultRetention:    flags.defaultRetention,
+			PlanIDPrefix:        flags.planIDPrefix,
+			IncludeProjectName:  flags.includeProjectName,
+			ExcludeBindMounts:   flags.excludeBindMounts,
+			Logger:              logger,
+			RestartTimeout:      flags.restartTimeout,
 		},
 		Interval:   interval,
 		WithEvents: withEvents,
@@ -262,6 +279,13 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envValue(key string) (string, bool) {
+	if v, ok := os.LookupEnv(key); ok {
+		return v, true
+	}
+	return "", false
 }
 
 type backupCLIOptions struct {

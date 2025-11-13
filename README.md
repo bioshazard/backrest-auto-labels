@@ -58,6 +58,33 @@ When `backrest.paths.include` matches a container mount, the sidecar rewrites it
 
 Need cron jitter inside a window? Set the minute field to `T` (e.g. `backrest.schedule=T 3 * * *`). The sidecar hashes the rendered plan ID to a deterministic minute between `0-59`, so each workload keeps a consistent-but-spread start time without overlapping exactly on the hour.
 
+### Override the default repo fallback
+
+If your Backrest config defines repos with IDs other than `sample-repo`/`default`, set `--default-repo` (or pass it through `RUN_FLAGS`) so unlabeled containers land on a real repo. You can also export `BACKREST_DEFAULT_REPO=my-repo` to make that the default for every command. When neither flag nor env var is provided, the sidecar now falls back to the repo referenced by the first plan in `/etc/backrest/config.json` (or, if there are no plans yet, the first repo entry) so the warning below only appears when *nothing* in the config references a repo ID.
+
+```yaml
+services:
+  sidecar:
+    image: ghcr.io/bioshazard/backrest-auto-labels:latest
+    command: [
+      "daemon",
+      "--config","/etc/backrest/config.json",
+      "--default-repo","prod-repo",
+      "--with-events",
+      "--apply"
+    ]
+```
+
+For ad-hoc runs (or `scripts/dry-run-*.sh`), append `--default-repo prod-repo` (or rely on `BACKREST_DEFAULT_REPO`) to the CLI invocation:
+
+```bash
+CONFIG=/etc/backrest/config.json ./bin/backrest-sidecar \
+  reconcile --dry-run --config "$CONFIG" --docker-root /var/lib/docker \
+  --default-repo prod-repo --include-project-name
+```
+
+Keep the repo ID in sync with whatever `repos[].id` entry Backrest already knows about; `backrest.repo=<id>` labels still win on containers that need a different target repo.
+
 ### Manage the compose stack
 
 Use the provided Make target to run Docker Compose with a stable project name (`backrest-dev`):

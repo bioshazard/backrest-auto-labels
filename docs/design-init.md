@@ -135,7 +135,7 @@ backrest-sidecar
     --docker-sock /var/run/docker.sock
     --docker-root /var/lib/docker
     --volume-prefix /var/lib/docker/volumes   # override (e.g. /docker_volumes) if you bind-mount elsewhere
-    --default-repo default
+    --default-repo default   # omit to inherit the first plan's repo from config.json
     --default-schedule "0 2 * * *"
     --default-retention "daily=7,weekly=4"
     --plan-id-prefix "backrest_sidecar_"
@@ -208,6 +208,7 @@ The command exits with code `2` (no write performed) but prints exactly how the 
 * `DOCKER_HOST` (socket override), `DOCKER_API_VERSION`
 * `BACKREST_CONFIG` (path to config.json; overrides `--config`)
 * `BACKREST_VOLUME_PREFIX` (defaults to `/var/lib/docker/volumes`, override when you bind that tree somewhere else such as `/docker_volumes`; labeled paths that refer to container mountpoints rewrite through this prefix)
+* `BACKREST_DEFAULT_REPO` (optional) maps to `--default-repo`; when unset, the sidecar inherits the repo ID from the first plan in `config.json`, or the first repo entry if no plans exist.
 * `BACKREST_DEFAULT_RETENTION` (optional) to override the fallback `daily=7,weekly=4`
 * `BACKREST_PLAN_ID_PREFIX` (defaults to `backrest_sidecar_`)
 * `RESTIC_*` in `--rcb-env-file` for backup-once mode

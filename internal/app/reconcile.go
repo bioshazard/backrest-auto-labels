@@ -18,32 +18,34 @@ import (
 
 // ReconcileOptions captures CLI flags for reconcile/daemon.
 type ReconcileOptions struct {
-	ConfigPath         string
-	Apply              bool
-	BackrestContainer  string
-	DryRun             bool
-	DockerSocket       string
-	DockerRoot         string
-	VolumePrefix       string
-	DefaultRepo        string
-	DefaultSchedule    string
-	DefaultRetention   string
-	PlanIDPrefix       string
-	IncludeProjectName bool
-	ExcludeBindMounts  bool
-	Logger             *slog.Logger
-	RestartTimeout     time.Duration
+	ConfigPath          string
+	Apply               bool
+	BackrestContainer   string
+	DryRun              bool
+	DockerSocket        string
+	DockerRoot          string
+	VolumePrefix        string
+	DefaultRepo         string
+	DefaultRepoProvided bool
+	DefaultSchedule     string
+	DefaultRetention    string
+	PlanIDPrefix        string
+	IncludeProjectName  bool
+	ExcludeBindMounts   bool
+	Logger              *slog.Logger
+	RestartTimeout      time.Duration
 }
 
 // Reconciler runs the main discovery/merge flow.
 type Reconciler struct {
-	opts     ReconcileOptions
-	client   *docker.Client
-	builder  *PlanBuilder
-	log      *slog.Logger
-	cfgPath  string
-	dryRun   bool
-	restarts struct {
+	opts                ReconcileOptions
+	client              *docker.Client
+	builder             *PlanBuilder
+	log                 *slog.Logger
+	cfgPath             string
+	dryRun              bool
+	defaultRepoProvided bool
+	restarts            struct {
 		container string
 		timeout   time.Duration
 	}
@@ -73,12 +75,13 @@ func NewReconciler(opts ReconcileOptions) (*Reconciler, error) {
 		opts.RestartTimeout = 15 * time.Second
 	}
 	return &Reconciler{
-		opts:    opts,
-		client:  client,
-		builder: builder,
-		log:     opts.Logger,
-		cfgPath: opts.ConfigPath,
-		dryRun:  opts.DryRun,
+		opts:                opts,
+		client:              client,
+		builder:             builder,
+		log:                 opts.Logger,
+		cfgPath:             opts.ConfigPath,
+		dryRun:              opts.DryRun,
+		defaultRepoProvided: opts.DefaultRepoProvided,
 		restarts: struct {
 			container string
 			timeout   time.Duration
@@ -178,14 +181,38 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 }
 
 func (r *Reconciler) setDefaultRepoFromConfig(cfg *model.Config) {
-	if cfg == nil || len(cfg.Repos) == 0 {
+	if cfg == nil {
 		return
 	}
 	current := strings.TrimSpace(r.builder.opts.DefaultRepo)
+	if !r.defaultRepoProvided {
+		current = ""
+	}
 	if current != "" && cfg.RepoExists(current) {
 		return
 	}
-	r.builder.opts.DefaultRepo = cfg.Repos[0].ID
+	fallback := firstRepoFromConfig(cfg)
+	if fallback == "" {
+		return
+	}
+	r.builder.opts.DefaultRepo = fallback
+}
+
+func firstRepoFromConfig(cfg *model.Config) string {
+	if cfg == nil {
+		return ""
+	}
+	cfg.EnsureNonNil()
+	for _, plan := range cfg.Plans {
+		repo := strings.TrimSpace(plan.Repo)
+		if repo != "" {
+			return repo
+		}
+	}
+	if len(cfg.Repos) > 0 {
+		return strings.TrimSpace(cfg.Repos[0].ID)
+	}
+	return ""
 }
 
 // ReconcileResult summarises the reconcile run.

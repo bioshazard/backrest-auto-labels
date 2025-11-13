@@ -1,6 +1,8 @@
 package app
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/zettaio/backrest-sidecar/internal/model"
@@ -59,8 +61,10 @@ func TestSetDefaultRepoFromConfigOverridesMissingExplicitDefault(t *testing.T) {
 }
 
 func testReconcilerWithDefault(defaultRepo string, provided bool) *Reconciler {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return &Reconciler{
 		builder:             NewPlanBuilder(PlanBuilderOptions{DefaultRepo: defaultRepo}),
 		defaultRepoProvided: provided,
+		log:                 logger,
 	}
 }

@@ -45,6 +45,7 @@ type Reconciler struct {
 	cfgPath             string
 	dryRun              bool
 	defaultRepoProvided bool
+	defaultRepoLogged   bool
 	restarts            struct {
 		container string
 		timeout   time.Duration
@@ -182,37 +183,65 @@ func (r *Reconciler) Run(ctx context.Context) (*ReconcileResult, error) {
 
 func (r *Reconciler) setDefaultRepoFromConfig(cfg *model.Config) {
 	if cfg == nil {
+		r.logDefaultRepo("config-missing", strings.TrimSpace(r.builder.opts.DefaultRepo))
 		return
 	}
 	current := strings.TrimSpace(r.builder.opts.DefaultRepo)
+	source := "flag"
 	if !r.defaultRepoProvided {
 		current = ""
+		source = ""
 	}
 	if current != "" && cfg.RepoExists(current) {
+		r.logDefaultRepo(sourceOrDefault(source, "flag"), current)
 		return
 	}
-	fallback := firstRepoFromConfig(cfg)
+	fallback, fallbackSource := firstRepoFromConfig(cfg)
 	if fallback == "" {
+		r.logDefaultRepo("unresolved", current)
 		return
 	}
 	r.builder.opts.DefaultRepo = fallback
+	r.logDefaultRepo(fallbackSource, fallback)
 }
 
-func firstRepoFromConfig(cfg *model.Config) string {
+func firstRepoFromConfig(cfg *model.Config) (string, string) {
 	if cfg == nil {
-		return ""
+		return "", ""
 	}
 	cfg.EnsureNonNil()
 	for _, plan := range cfg.Plans {
 		repo := strings.TrimSpace(plan.Repo)
 		if repo != "" {
-			return repo
+			return repo, "plan"
 		}
 	}
 	if len(cfg.Repos) > 0 {
-		return strings.TrimSpace(cfg.Repos[0].ID)
+		return strings.TrimSpace(cfg.Repos[0].ID), "repo"
 	}
-	return ""
+	return "", ""
+}
+
+func (r *Reconciler) logDefaultRepo(source, repo string) {
+	if r.defaultRepoLogged {
+		return
+	}
+	r.defaultRepoLogged = true
+	if repo == "" {
+		r.log.Warn("default.repo.unset", slog.String("source", source))
+		return
+	}
+	if source == "" {
+		source = "implicit"
+	}
+	r.log.Info("default.repo.resolved", slog.String("repo", repo), slog.String("source", source))
+}
+
+func sourceOrDefault(src, fallback string) string {
+	if strings.TrimSpace(src) == "" {
+		return fallback
+	}
+	return src
 }
 
 // ReconcileResult summarises the reconcile run.
